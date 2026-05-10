@@ -37,7 +37,7 @@ export const updateAdmin = async (uid, updates) => {
 };
 
 // ======================
-// DELETE ADMIN
+// DELETE ADMINs
 // ======================
 export const deleteAdmin = async (uid) => {
   return await remove(ref(db, `${ADMIN_PATH}/${uid}`));
