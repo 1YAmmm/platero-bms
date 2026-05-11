@@ -1,7 +1,13 @@
-import { useState, useCallback } from "react";
-import { COMPLAINTS, generateId, formatDate } from "../../data/mockData";
+import { useState, useCallback, useEffect } from "react";
 import Table from "../../components/Table";
 import Modal from "../../components/Modal";
+import Toast from "../../components/Toast";
+import {
+  createComplaint,
+  listenComplaints,
+  updateComplaint,
+  deleteComplaint,
+} from "../../service/complaints.service";
 
 import { FormField } from "../../components/Form";
 import {
@@ -42,7 +48,7 @@ const EMPTY_FORM = {
 };
 
 export default function Complaints() {
-  const [complaints, setComplaints] = useState(COMPLAINTS);
+  const [complaints, setComplaints] = useState([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [priorityFilter, setPriorityFilter] = useState("All");
@@ -50,6 +56,30 @@ export default function Complaints() {
   const [selected, setSelected] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [deleteTarget, setDeleteTarget] = useState(null);
+
+  /* ================= TOAST ================= */
+  const [toast, setToast] = useState({
+    message: "",
+    type: "success",
+  });
+
+  const showToast = (message, type = "success") => {
+    setToast({ message, type });
+  };
+
+  const closeToast = () => {
+    setToast({ message: "", type: "success" });
+  };
+
+  /* ================= FIREBASE LISTENER ================= */
+  useEffect(() => {
+    const unsubscribe = listenComplaints((data) => {
+      setComplaints(data);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   /* ================= FILTER ================= */
   const filtered = complaints.filter((c) => {
     const textMatch =
@@ -58,7 +88,6 @@ export default function Complaints() {
         .includes(search.toLowerCase());
 
     const statusMatch = statusFilter === "All" || c.status === statusFilter;
-
     const priorityMatch =
       priorityFilter === "All" || c.priority === priorityFilter;
 
@@ -81,9 +110,18 @@ export default function Complaints() {
   const openDelete = useCallback((c) => {
     setDeleteTarget(c);
   }, []);
-  const confirmDelete = useCallback(() => {
-    setComplaints((prev) => prev.filter((c) => c.id !== deleteTarget.id));
-    setDeleteTarget(null);
+
+  const confirmDelete = useCallback(async () => {
+    if (!deleteTarget) return;
+
+    try {
+      await deleteComplaint(deleteTarget.id);
+      showToast("Complaint deleted successfully", "success");
+    } catch (err) {
+      showToast("Failed to delete complaint", "error");
+    } finally {
+      setDeleteTarget(null);
+    }
   }, [deleteTarget]);
 
   const openView = useCallback((c) => {
@@ -91,22 +129,21 @@ export default function Complaints() {
     setModal("view");
   }, []);
 
-  const handleSave = useCallback(() => {
-    if (modal === "add") {
-      const newItem = {
-        ...form,
-        id: generateId("CMP", complaints),
-      };
-      setComplaints((prev) => [...prev, newItem]);
-    } else {
-      setComplaints((prev) =>
-        prev.map((c) =>
-          c.id === selected.id ? { ...form, id: selected.id } : c,
-        ),
-      );
+  const handleSave = useCallback(async () => {
+    try {
+      if (modal === "add") {
+        await createComplaint(form);
+        showToast("Complaint created successfully", "success");
+      } else {
+        await updateComplaint(selected.id, form);
+        showToast("Complaint updated successfully", "success");
+      }
+
+      setModal(null);
+    } catch (err) {
+      showToast("Something went wrong", "error");
     }
-    setModal(null);
-  }, [modal, form, complaints, selected]);
+  }, [modal, form, selected]);
 
   /* ================= COLORS ================= */
   const statusColor = (s) =>
@@ -155,7 +192,7 @@ export default function Complaints() {
       label: "Status",
       render: (v) => <span className={`badge ${statusColor(v)}`}>{v}</span>,
     },
-    { key: "dateFiled", label: "Filed", render: (v) => formatDate(v) },
+    { key: "dateFiled", label: "Filed" },
     { key: "assignedTo", label: "Assigned To" },
     {
       key: "id",
@@ -168,12 +205,14 @@ export default function Complaints() {
           >
             <IconEye size={14} />
           </button>
+
           <button
             onClick={() => openEdit(r)}
             className="btn-sm bg-amber-50 text-amber-700 hover:bg-amber-100 px-2.5 py-1.5 rounded-lg"
           >
             <IconEdit size={14} />
           </button>
+
           <button
             onClick={() => openDelete(r)}
             className="btn-sm bg-red-50 text-red-700 hover:bg-red-100 px-2.5 py-1.5 rounded-lg"
@@ -188,6 +227,9 @@ export default function Complaints() {
   /* ================= UI ================= */
   return (
     <div className="animate-fade-in">
+      {/* TOAST */}
+      <Toast message={toast.message} type={toast.type} onClose={closeToast} />
+
       {/* HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
@@ -205,9 +247,8 @@ export default function Complaints() {
         </button>
       </div>
 
-      {/* FILTER BAR */}
+      {/* FILTER */}
       <div className="glass-card p-4 mb-5 flex flex-col sm:flex-row gap-3">
-        {/* SEARCH */}
         <div className="relative flex-1">
           <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
@@ -218,7 +259,6 @@ export default function Complaints() {
           />
         </div>
 
-        {/* STATUS */}
         <div className="flex gap-2 flex-wrap">
           {["All", ...STATUSES].map((s) => (
             <button
@@ -235,7 +275,6 @@ export default function Complaints() {
           ))}
         </div>
 
-        {/* PRIORITY */}
         <div className="flex gap-2 flex-wrap">
           {["All", ...PRIORITIES].map((p) => (
             <button
@@ -258,7 +297,7 @@ export default function Complaints() {
         <Table columns={columns} data={filtered} />
       </div>
 
-      {/* MODAL */}
+      {/* ADD / EDIT MODAL */}
       <Modal
         isOpen={modal === "add" || modal === "edit"}
         onClose={() => setModal(null)}
@@ -301,10 +340,7 @@ export default function Complaints() {
                 className="input-field"
                 value={form.complainantAddress}
                 onChange={(e) =>
-                  setForm((p) => ({
-                    ...p,
-                    complainantAddress: e.target.value,
-                  }))
+                  setForm((p) => ({ ...p, complainantAddress: e.target.value }))
                 }
               />
             </FormField>
@@ -395,6 +431,8 @@ export default function Complaints() {
           </FormField>
         </div>
       </Modal>
+
+      {/* DELETE MODAL */}
       <Modal
         isOpen={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
@@ -407,7 +445,6 @@ export default function Complaints() {
             >
               Cancel
             </button>
-
             <button
               onClick={confirmDelete}
               className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
@@ -417,22 +454,118 @@ export default function Complaints() {
           </>
         }
       >
-        <div className="p-2">
-          <p className="text-slate-700">
-            Are you sure you want to delete this complaint?
-          </p>
+        <p>Are you sure you want to delete this complaint?</p>
+      </Modal>
+      {/* VIEW MODAL */}
+      <Modal
+        isOpen={modal === "view"}
+        onClose={() => setModal(null)}
+        title="Complaint Details"
+        footer={
+          <button onClick={() => setModal(null)} className="btn-secondary">
+            Close
+          </button>
+        }
+      >
+        {selected && (
+          <div className="space-y-5 text-sm">
+            {/* HEADER CARD */}
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs text-slate-400">Complaint ID</p>
+                  <p className="font-mono text-slate-700">{selected.id}</p>
+                </div>
 
-          {deleteTarget && (
-            <div className="mt-3 text-sm text-slate-500">
-              <p>
-                <b>ID:</b> {deleteTarget.id}
-              </p>
-              <p>
-                <b>Complainant:</b> {deleteTarget.complainantName}
+                <div className="flex gap-2">
+                  <span className={`badge ${statusColor(selected.status)}`}>
+                    {selected.status}
+                  </span>
+                  <span className={`badge ${priorityColor(selected.priority)}`}>
+                    {selected.priority}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* PERSON INFO */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 rounded-xl border bg-white">
+                <p className="text-xs text-slate-400">Complainant</p>
+                <p className="font-semibold text-slate-800">
+                  {selected.complainantName}
+                </p>
+                <p className="text-xs text-slate-500 mt-1">
+                  {selected.complainantContact}
+                </p>
+              </div>
+
+              <div className="p-3 rounded-xl border bg-white">
+                <p className="text-xs text-slate-400">Respondent</p>
+                <p className="font-semibold text-slate-800">
+                  {selected.respondentName || "—"}
+                </p>
+              </div>
+            </div>
+
+            {/* DETAILS CARD */}
+            <div className="p-4 rounded-xl border bg-white space-y-3">
+              <div>
+                <p className="text-xs text-slate-400">Category</p>
+                <p className="font-medium">{selected.category}</p>
+              </div>
+
+              <div>
+                <p className="text-xs text-slate-400">Description</p>
+                <p className="text-slate-700 whitespace-pre-wrap leading-relaxed">
+                  {selected.description}
+                </p>
+              </div>
+            </div>
+
+            {/* ADDRESS + ASSIGNMENT */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 rounded-xl border bg-white">
+                <p className="text-xs text-slate-400">Address</p>
+                <p className="text-slate-700">
+                  {selected.complainantAddress || "—"}
+                </p>
+              </div>
+
+              <div className="p-3 rounded-xl border bg-white">
+                <p className="text-xs text-slate-400">Assigned To</p>
+                <p className="text-slate-700">
+                  {selected.assignedTo || "Unassigned"}
+                </p>
+              </div>
+            </div>
+
+            {/* FOOTER INFO */}
+            <div className="grid grid-cols-2 gap-3 text-xs text-slate-500">
+              <div className="p-3 rounded-xl bg-slate-50 border">
+                <p>Filed Date</p>
+                <p className="text-slate-700 font-medium">
+                  {selected.dateFiled}
+                </p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-slate-50 border">
+                <p>Resolved Date</p>
+                <p className="text-slate-700 font-medium">
+                  {selected.dateResolved || "Not yet resolved"}
+                </p>
+              </div>
+            </div>
+
+            {/* NOTES */}
+            <div className="p-4 rounded-xl border bg-white">
+              <p className="text-xs text-slate-400 mb-2">Notes / Resolution</p>
+              <p className="text-slate-700 whitespace-pre-wrap">
+                {selected.notes || "No notes added."}
               </p>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </Modal>
     </div>
   );
