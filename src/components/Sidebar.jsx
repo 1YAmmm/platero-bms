@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { logoutAdmin } from "../lib/auth/admin.auth";
+import platerologo from "../assets/image/platerologo.webp";
 import Modal from "./Modal";
 import {
   IconDashboard,
@@ -48,17 +49,13 @@ export default function Sidebar({ activeModule, onNavigate }) {
       {/* Brand */}
       <div className="px-5 py-5 border-b border-blue-900">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-amber-400 flex items-center justify-center flex-shrink-0">
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#1e3a8a"
-              strokeWidth="2.5"
-            >
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-            </svg>
+          <div className="w-10 h-10 rounded-full overflow-hidden bg-amber-400 flex items-center justify-center flex-shrink-0">
+            <img
+              src={platerologo}
+              alt="Barangay Platero logo"
+              loading="lazy"
+              className="w-full h-full object-cover rounded-full"
+            />
           </div>
 
           <div>
