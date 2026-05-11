@@ -92,18 +92,14 @@ export default function AdminLogin() {
       {/* Right Panel */}
       <div className="flex-1 lg:max-w-md flex flex-col items-center justify-center p-8 lg:bg-white/5 lg:backdrop-blur-sm">
         <div className="w-full max-w-sm">
-          <div className="lg:hidden flex items-center gap-3 mb-8">
-            <div className="w-12 h-12 rounded-full bg-amber-400 flex items-center justify-center">
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="#1e3a8a"
-                strokeWidth="2.5"
-              >
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-              </svg>
+          <div className="lg:hidden flex gap-3 mb-8">
+            <div className="w-12 h-12 rounded-full overflow-hidden bg-amber-400 flex items-center justify-center">
+              <img
+                src={platerologo}
+                alt="Barangay Platero logo"
+                loading="lazy"
+                className="w-full h-full object-cover"
+              />
             </div>
 
             <div>
