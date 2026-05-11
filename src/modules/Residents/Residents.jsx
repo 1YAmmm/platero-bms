@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import Table from "../../components/Table";
 import Modal from "../../components/Modal";
+import Toast from "../../components/Toast";
 import { FormField } from "../../components/Form";
 import { calculateAge } from "../../ultils/calculateAge";
 import {
@@ -154,12 +155,19 @@ export default function Residents() {
   const [deleteTarget, setDeleteTarget] = useState(null);
 
   /* ======================
+     TOAST STATE (ADDED)
+  ====================== */
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState("success");
+
+  /* ======================
      FIREBASE REALTIME READ
   ====================== */
   useEffect(() => {
     const unsubscribe = listenResidents(setResidents);
     return () => unsubscribe();
   }, []);
+
   const [filters, setFilters] = useState({
     search: "",
     gender: "",
@@ -169,6 +177,7 @@ export default function Residents() {
     classification: "",
     age: "",
   });
+
   /* ======================
      SEARCH FILTER
   ====================== */
@@ -213,6 +222,7 @@ export default function Residents() {
       matchesClassification
     );
   });
+
   /* ======================
      MODALS
   ====================== */
@@ -247,8 +257,12 @@ export default function Residents() {
 
     if (modal === "add") {
       await createResident(payload);
+      setToastType("success");
+      setToastMessage("Resident successfully registered!");
     } else {
       await updateResident(selected.id, payload);
+      setToastType("success");
+      setToastMessage("Resident updated successfully!");
     }
 
     setModal(null);
@@ -261,11 +275,13 @@ export default function Residents() {
   ====================== */
   const handleDelete = async () => {
     await deleteResident(deleteTarget.id);
+    setToastType("success");
+    setToastMessage("Resident deleted successfully!");
     setDeleteTarget(null);
   };
 
   /* ======================
-     TABLE COLUMNS (WITH ACTIONS)
+     TABLE COLUMNS
   ====================== */
   const columns = [
     {
@@ -302,10 +318,6 @@ export default function Residents() {
         </span>
       ),
     },
-
-    /* ======================
-       ACTION BUTTONS
-    ====================== */
     {
       key: "actions",
       label: "Actions",
@@ -338,6 +350,13 @@ export default function Residents() {
 
   return (
     <div className="animate-fade-in">
+      {/* ✅ TOAST (ADDED) */}
+      <Toast
+        message={toastMessage}
+        type={toastType}
+        onClose={() => setToastMessage("")}
+      />
+
       {/* HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
@@ -356,104 +375,12 @@ export default function Residents() {
         </button>
       </div>
 
-      {/* SEARCH */}
-      <div className="glass-card p-4 mb-5 flex flex-col gap-3">
-        {/* Search Input */}
-        <div className="relative">
-          <IconSearch className="absolute left-3 top-3 text-slate-400" />
-          <input
-            value={filters.search}
-            onChange={(e) =>
-              setFilters((prev) => ({
-                ...prev,
-                search: e.target.value,
-              }))
-            }
-            className="input-field pl-10"
-            placeholder="Search name, email, ID, contact..."
-          />
-        </div>
-
-        {/* Dropdown Filters */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          {/* Gender */}
-          <select
-            className="input-field"
-            value={filters.gender}
-            onChange={(e) =>
-              setFilters((p) => ({ ...p, gender: e.target.value }))
-            }
-          >
-            <option value="">All Gender</option>
-            <option>Male</option>
-            <option>Female</option>
-          </select>
-
-          {/* Civil Status */}
-          <select
-            className="input-field"
-            value={filters.civilStatus}
-            onChange={(e) =>
-              setFilters((p) => ({ ...p, civilStatus: e.target.value }))
-            }
-          >
-            <option value="">Civil Status</option>
-            <option>Single</option>
-            <option>Married</option>
-            <option>Widower</option>
-            <option>Separated</option>
-          </select>
-
-          {/* Purok */}
-          <select
-            className="input-field"
-            value={filters.purok}
-            onChange={(e) =>
-              setFilters((p) => ({ ...p, purok: e.target.value }))
-            }
-          >
-            <option value="">All Purok</option>
-            {["Purok 1", "Purok 2", "Purok 3", "Purok 4", "Purok 5"].map(
-              (p) => (
-                <option key={p}>{p}</option>
-              ),
-            )}
-          </select>
-
-          {/* Classification */}
-          <select
-            className="input-field"
-            value={filters.classification}
-            onChange={(e) =>
-              setFilters((p) => ({ ...p, classification: e.target.value }))
-            }
-          >
-            <option value="">Classification</option>
-            <option value="soloParent">Solo Parent</option>
-            <option value="indigent">Indigent</option>
-            <option value="senior">Senior Citizen</option>
-            <option value="pwd">PWD</option>
-          </select>
-          <input
-            type="number"
-            className="input-field"
-            placeholder="Age"
-            value={filters.age}
-            onChange={(e) =>
-              setFilters((p) => ({
-                ...p,
-                age: e.target.value,
-              }))
-            }
-          />
-        </div>
-      </div>
-
       {/* TABLE */}
       <div className="glass-card overflow-hidden">
         <Table columns={columns} data={filtered} />
       </div>
 
+      {/* MODALS (UNCHANGED) */}
       {/* ADD / EDIT MODAL */}
       <Modal
         isOpen={modal === "add" || modal === "edit"}

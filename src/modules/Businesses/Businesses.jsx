@@ -3,6 +3,7 @@ import Table from "../../components/Table";
 import Modal from "../../components/Modal";
 import { FormField } from "../../components/Form";
 import { formatDate } from "../../data/mockData";
+import Toast from "../../components/Toast";
 import {
   IconPlus,
   IconEdit,
@@ -211,6 +212,9 @@ function BizForm({ form, setForm }) {
   );
 }
 
+/* ======================
+   MAIN COMPONENT
+====================== */
 export default function Businesses() {
   const [businesses, setBusinesses] = useState([]);
   const [search, setSearch] = useState("");
@@ -220,9 +224,9 @@ export default function Businesses() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [filter, setFilter] = useState("All");
 
-  /* ======================
-     REALTIME LISTENER
-  ====================== */
+  // ✅ TOAST STATE ADDED
+  const [toast, setToast] = useState(null);
+
   useEffect(() => {
     const unsubscribe = listenBusinesses((data) => {
       setBusinesses(data);
@@ -268,7 +272,7 @@ export default function Businesses() {
   };
 
   /* ======================
-     SAVE
+     SAVE (WITH TOAST)
   ====================== */
   const handleSave = async () => {
     try {
@@ -277,30 +281,45 @@ export default function Businesses() {
           ...form,
           registeredDate: new Date().toISOString().split("T")[0],
         });
+
+        setToast({
+          message: "Business successfully registered!",
+          type: "success",
+        });
       } else if (modal === "edit" && selected) {
         await updateBusiness(selected.id, form);
+
+        setToast({
+          message: "Business updated successfully!",
+          type: "success",
+        });
       }
 
       setModal(null);
       setForm({ ...EMPTY_FORM });
       setSelected(null);
     } catch (error) {
-      console.error("Error saving business:", error);
+      setToast({ message: "Failed to save business", type: "error" });
     }
   };
 
   /* ======================
-     DELETE
+     DELETE (WITH TOAST)
   ====================== */
   const handleDelete = async () => {
     try {
       if (deleteTarget) {
         await deleteBusiness(deleteTarget.id);
+
+        setToast({
+          message: "Business deleted successfully!",
+          type: "success",
+        });
       }
 
       setDeleteTarget(null);
     } catch (error) {
-      console.error("Error deleting business:", error);
+      setToast({ message: "Failed to delete business", type: "error" });
     }
   };
 
@@ -347,7 +366,6 @@ export default function Businesses() {
       label: "Actions",
       render: (_, r) => (
         <div className="flex gap-1">
-          {/* VIEW INFO */}
           <button
             onClick={() => {
               setSelected(r);
@@ -358,7 +376,6 @@ export default function Businesses() {
             <IconInfo size={14} />
           </button>
 
-          {/* EDIT */}
           <button
             onClick={() => openEdit(r)}
             className="btn-sm bg-amber-50 text-amber-700 hover:bg-amber-100 px-2.5 py-1.5 rounded-lg"
@@ -366,7 +383,6 @@ export default function Businesses() {
             <IconEdit size={14} />
           </button>
 
-          {/* DELETE */}
           <button
             onClick={() => setDeleteTarget(r)}
             className="btn-sm bg-red-50 text-red-600 hover:bg-red-100 px-2.5 py-1.5 rounded-lg"
@@ -380,10 +396,16 @@ export default function Businesses() {
 
   return (
     <div className="animate-fade-in">
+      {/* ✅ TOAST ADDED HERE */}
+      <Toast
+        message={toast?.message}
+        type={toast?.type}
+        onClose={() => setToast(null)}
+      />
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h2 className="section-title">Business Registration</h2>
-
           <p className="section-subtitle">
             {businesses.length} registered businesses
           </p>
@@ -438,6 +460,7 @@ export default function Businesses() {
         />
       </div>
 
+      {/* ADD / EDIT MODAL */}
       <Modal
         isOpen={modal === "add" || modal === "edit"}
         onClose={() => setModal(null)}
@@ -459,6 +482,7 @@ export default function Businesses() {
         <BizForm form={form} setForm={setForm} />
       </Modal>
 
+      {/* DELETE MODAL */}
       <Modal
         isOpen={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
@@ -483,6 +507,8 @@ export default function Businesses() {
           <strong>{deleteTarget?.businessName}</strong>?
         </p>
       </Modal>
+
+      {/* VIEW MODAL */}
       <Modal
         isOpen={modal === "view"}
         onClose={() => {
