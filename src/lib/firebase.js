@@ -1,20 +1,20 @@
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getDatabase } from "firebase/database";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyB5NYWdawKE3FdSnyg_lnOSyUC_SOFwU_s",
-  authDomain: "brngyplaterobms.firebaseapp.com",
-  databaseURL:
-    "https://brngyplaterobms-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "brngyplaterobms",
-  storageBucket: "brngyplaterobms.firebasestorage.app",
-  messagingSenderId: "732325163894",
-  appId: "1:732325163894:web:a5e624e30553fe509bc057",
-  measurementId: "G-5NZM4N5SWP",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
-const app = initializeApp(firebaseConfig);
+// 🚨 prevent double init (important for Vercel build)
+const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
 export const db = getDatabase(app);

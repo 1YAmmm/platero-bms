@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import Table from "../../components/Table";
 import Modal from "../../components/Modal";
 import { FormField } from "../../components/Form";
-import { calculateAge } from "../../ultils/CalculateAge";
+import { calculateAge } from "../../ultils/calculateAge";
 import {
   createResident,
   listenResidents,
