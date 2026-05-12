@@ -1,4 +1,4 @@
-import { ref, onValue, set, update, remove, off } from "firebase/database";
+import { ref, onValue, set, update, remove, off, get } from "firebase/database";
 import { db } from "../lib/firebase";
 
 const ADMIN_PATH = "plateroBMS/admins";
@@ -41,4 +41,16 @@ export const updateAdmin = async (uid, updates) => {
 // ======================
 export const deleteAdmin = async (uid) => {
   return await remove(ref(db, `${ADMIN_PATH}/${uid}`));
+};
+export const getAdmins = async () => {
+  const snapshot = await get(ref(db, ADMIN_PATH));
+
+  if (!snapshot.exists()) return [];
+
+  const data = snapshot.val();
+
+  return Object.keys(data).map((key) => ({
+    id: key,
+    ...data[key],
+  }));
 };

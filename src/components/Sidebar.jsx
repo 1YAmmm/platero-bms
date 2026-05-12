@@ -38,6 +38,8 @@ export default function Sidebar({ activeModule, onNavigate }) {
       await logoutAdmin();
       setShowLogoutModal(false);
       setMobileOpen(false);
+      // localStorage.removeItem("user");
+      localStorage.clear();
       navigate("/");
     } catch (err) {
       console.error("Logout error:", err);

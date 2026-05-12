@@ -4,7 +4,7 @@ import { loginAdmin } from "../lib/auth/admin.auth";
 import { IconEye, IconEyeOff } from "../assets/svg/Icons";
 
 import platerologo from "../assets/image/platerologo.webp";
-
+import { getAdmins } from "../service/admin.service";
 export default function AdminLogin() {
   const [form, setForm] = useState({ username: "", password: "" });
   const [showPass, setShowPass] = useState(false);
@@ -15,16 +15,41 @@ export default function AdminLogin() {
 
   const handleLogin = async (e) => {
     e.preventDefault();
+
     setLoading(true);
     setError("");
 
     try {
-      // IMPORTANT: treat username as email for Firebase Auth
-      await loginAdmin(form.username, form.password);
+      // LOGIN FIREBASE AUTH
+      const userCredential = await loginAdmin(form.username, form.password);
 
+      const authUser = userCredential.user;
+
+      // GET ADMINS
+      const admins = await getAdmins();
+
+      // CHECK ADMIN
+      const foundAdmin = admins.find(
+        (admin) =>
+          admin.uid === authUser.uid &&
+          admin.role === "admin" &&
+          admin.status === "active",
+      );
+
+      if (!foundAdmin) {
+        setError("Access denied");
+
+        return;
+      }
+
+      // SAVE USER
+      localStorage.setItem("user", JSON.stringify(foundAdmin));
+
+      // REDIRECT
       navigate("/admin/dashboard");
     } catch (err) {
       console.error(err);
+
       setError("Invalid username or password");
     } finally {
       setLoading(false);
