@@ -1,24 +1,31 @@
-import { useState } from "react";
-import {
-  CERTIFICATES,
-  RESIDENTS,
-  BARANGAY_INFO,
-  generateId,
-  formatDate,
-} from "../../data/mockData";
+import { useEffect, useState } from "react";
+import { BARANGAY_INFO, formatDate } from "../../data/mockData";
 
+import {
+  createCertificate,
+  listenCertificates,
+  updateCertificate,
+  deleteCertificate,
+} from "../../service/certificate.service";
+import Toast from "../../components/Toast";
 import BarangayClearanceTemplate from "../../components/certificates/BarangayClearanceTemplate";
 import BusinessPermitTemplate from "../../components/certificates/BusinessPermitTemplate";
 import CertificationTemplate from "../../components/certificates/CertificationTemplate";
+import { listenResidents } from "../../service/resident.service";
+import { listenBusinesses } from "../../service/business.service";
+import { listenComplaints } from "../../service/complaints.service";
 import Modal from "../../components/Modal";
 import { FormField } from "../../components/Form";
+
 import {
   IconPlus,
   IconPrint,
   IconEye,
   IconSearch,
   IconInfo,
+  IconDelete,
 } from "../../assets/svg/Icons";
+
 import { CERTIFICATE_CONFIG } from "../../data/certificateConfig";
 
 const CERT_TYPES = [
@@ -59,53 +66,221 @@ const EMPTY_FORM = {
   operatorName: "",
 
   // complaint
-  complaintAgainst: "",
+  complaintId: "",
+  complainantName: "",
+  respondentName: "",
   complaintType: "",
 };
 
-// ─── Main Component ─────────────────────────────────────────────────────────
-
 export default function Certificates() {
-  const [certificates, setCertificates] = useState(CERTIFICATES);
+  const [certificates, setCertificates] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState(null);
+
   const [selected, setSelected] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
+
   const [barangayInfo, setBarangayInfo] = useState(BARANGAY_INFO);
+  const [residents, setResidents] = useState([]);
+  const [businesses, setBusinesses] = useState([]);
+  const [complaints, setComplaints] = useState([]);
+  const [toast, setToast] = useState({
+    message: "",
+    type: "success",
+  });
+  /* ======================
+     REALTIME FIREBASE LISTENER
+  ====================== */
+  useEffect(() => {
+    const unsubscribe = listenCertificates((data) => {
+      setCertificates(data || []);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+  /* ======================
+      Load resident,business,complaints
+  ====================== */
+  useEffect(() => {
+    const unsubscribeResidents = listenResidents((data) => {
+      setResidents(data || []);
+    });
+
+    const unsubscribeBusinesses = listenBusinesses((data) => {
+      setBusinesses(data || []);
+    });
+    const unsubscribeComplaints = listenComplaints((data) => {
+      setComplaints(data || []);
+    });
+
+    return () => {
+      unsubscribeResidents();
+      unsubscribeBusinesses();
+      unsubscribeComplaints();
+    };
+  }, []);
+
+  /* ======================
+     FILTER
+  ====================== */
   const filtered = certificates.filter((c) =>
     `${c.residentName} ${c.id} ${c.type} ${c.purpose}`
       .toLowerCase()
       .includes(search.toLowerCase()),
   );
 
+  /* ======================
+     MODAL ACTIONS
+  ====================== */
   const openAdd = () => {
     setForm(EMPTY_FORM);
     setModal("add");
   };
+
   const openView = (c) => {
     setSelected(c);
     setModal("view");
   };
+
   const openPrint = (c) => {
     setSelected(c);
     setModal("print");
   };
 
-  const handleSave = () => {
-    const nc = {
-      ...form,
-      id: generateId("CERT", certificates),
-      fee: CERT_FEES[form.type] || "0.00",
-      status: "Issued",
-    };
-    setCertificates([...certificates, nc]);
-    setModal(null);
+  /* ======================
+     SAVE CERTIFICATE
+  ====================== */
+  const handleSave = async () => {
+    try {
+      // REQUIRED FIELDS VALIDATION
+      const requiredFields = [];
+
+      if (certConfig.fields.includes("resident") && !form.residentId) {
+        requiredFields.push("Resident Name");
+      }
+
+      if (certConfig.fields.includes("businessName") && !form.businessName) {
+        requiredFields.push("Business Name");
+      }
+
+      if (
+        certConfig.fields.includes("businessAddress") &&
+        !form.businessAddress
+      ) {
+        requiredFields.push("Business Address");
+      }
+
+      if (
+        certConfig.fields.includes("businessNature") &&
+        !form.businessNature
+      ) {
+        requiredFields.push("Nature of Business");
+      }
+
+      if (certConfig.fields.includes("purpose") && !form.purpose.trim()) {
+        requiredFields.push("Purpose");
+      }
+
+      if (!form.issuedDate) {
+        requiredFields.push("Issued Date");
+      }
+
+      if (!form.fee) {
+        requiredFields.push("Fee");
+      }
+
+      // SHOW ERROR TOAST
+      if (requiredFields.length > 0) {
+        setToast({
+          message: `Please fill in: ${requiredFields.join(", ")}`,
+          type: "error",
+        });
+
+        return;
+      }
+
+      // SAVE
+      const payload = {
+        ...form,
+        fee: form.fee || "0.00",
+        status: "Issued",
+      };
+
+      await createCertificate(payload);
+
+      // SUCCESS TOAST
+      setToast({
+        message: "Certificate issued successfully!",
+        type: "success",
+      });
+
+      setModal(null);
+      setForm(EMPTY_FORM);
+    } catch (error) {
+      console.error("Error saving certificate:", error);
+
+      setToast({
+        message: "Failed to issue certificate.",
+        type: "error",
+      });
+    }
   };
 
+  /* ======================
+     UPDATE CERTIFICATE
+  ====================== */
+  const handleUpdate = async () => {
+    try {
+      if (!selected?.id) return;
+
+      await updateCertificate(selected.id, form);
+
+      setModal(null);
+      setSelected(null);
+    } catch (error) {
+      console.error("Error updating certificate:", error);
+      alert("Failed to update certificate.");
+    }
+  };
+
+  /* ======================
+   DELETE CERTIFICATE
+====================== */
+  const handleDelete = async () => {
+    try {
+      if (!deleteTarget?.id) return;
+
+      await deleteCertificate(deleteTarget.id);
+
+      setToast({
+        message: "Certificate deleted successfully!",
+        type: "success",
+      });
+
+      setDeleteTarget(null);
+    } catch (error) {
+      console.error("Error deleting certificate:", error);
+
+      setToast({
+        message: "Failed to delete certificate.",
+        type: "error",
+      });
+    }
+  };
+  /* ======================
+     PRINT
+  ====================== */
   const handlePrint = () => {
     window.print();
   };
 
+  /* ======================
+     BADGE COLORS
+  ====================== */
   const certTypeColor = (t) =>
     ({
       "Barangay Clearance": "badge-blue",
@@ -114,6 +289,10 @@ export default function Certificates() {
       "Certificate of Indigency": "badge-red",
       "Complaint Certification": "badge-gray",
     })[t] || "badge-gray";
+
+  /* ======================
+     TEMPLATE RENDERER
+  ====================== */
   const renderTemplate = (cert, barangayInfo) => {
     if (!cert) return null;
 
@@ -134,16 +313,25 @@ export default function Certificates() {
         );
     }
   };
+
   const certConfig = CERTIFICATE_CONFIG[form.type];
+  const filteredResidents =
+    form.type === "Solo Parent Certificate"
+      ? residents.filter((r) => r.soloParent)
+      : form.type === "Certificate of Indigency"
+        ? residents.filter((r) => r.indigent)
+        : residents;
   return (
     <div className="animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h2 className="section-title">Certificate Generator</h2>
+
           <p className="section-subtitle">
             {certificates.length} certificates issued
           </p>
         </div>
+
         <div className="flex gap-2">
           <button
             onClick={() => setModal("officials")}
@@ -152,11 +340,13 @@ export default function Certificates() {
             <IconInfo size={18} />
             Edit Officials
           </button>
+
           <button
             onClick={openAdd}
             className="btn-primary flex items-center gap-2"
           >
-            <IconPlus size={18} /> Issue Certificate
+            <IconPlus size={18} />
+            Issue Certificate
           </button>
         </div>
       </div>
@@ -165,6 +355,7 @@ export default function Certificates() {
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">
         {CERT_TYPES.map((t) => {
           const count = certificates.filter((c) => c.type === t).length;
+
           return (
             <div
               key={t}
@@ -182,21 +373,25 @@ export default function Certificates() {
                   }[t]
                 }
               </p>
+
               <p className="text-xs font-semibold text-slate-700 leading-tight mb-1">
                 {t}
               </p>
+
               <p className="text-blue-800 font-bold text-lg">{count}</p>
             </div>
           );
         })}
       </div>
 
+      {/* SEARCH */}
       <div className="glass-card p-4 mb-5">
         <div className="relative">
           <IconSearch
             size={16}
             className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
           />
+
           <input
             className="input-field pl-9"
             placeholder="Search certificates..."
@@ -206,6 +401,7 @@ export default function Certificates() {
         </div>
       </div>
 
+      {/* TABLE */}
       <div className="glass-card overflow-hidden">
         <div className="table-wrapper bg-white">
           <table className="data-table">
@@ -221,8 +417,15 @@ export default function Certificates() {
                 <th>Actions</th>
               </tr>
             </thead>
+
             <tbody>
-              {filtered.length === 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={8} className="text-center py-10 text-slate-400">
+                    Loading certificates...
+                  </td>
+                </tr>
+              ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="text-center py-10 text-slate-400">
                     No certificates found.
@@ -236,20 +439,27 @@ export default function Certificates() {
                         {c.id}
                       </span>
                     </td>
+
                     <td>
                       <span className="font-semibold">{c.residentName}</span>
                     </td>
+
                     <td>
                       <span className={`badge ${certTypeColor(c.type)}`}>
                         {c.type}
                       </span>
                     </td>
+
                     <td className="max-w-xs truncate">{c.purpose}</td>
+
                     <td>{formatDate(c.issuedDate)}</td>
+
                     <td>₱{c.fee}</td>
+
                     <td>
                       <span className="badge badge-green">{c.status}</span>
                     </td>
+
                     <td>
                       <div className="flex gap-1">
                         <button
@@ -258,11 +468,19 @@ export default function Certificates() {
                         >
                           <IconEye size={14} />
                         </button>
+
                         <button
                           onClick={() => openPrint(c)}
                           className="btn-sm bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-2.5 py-1.5 rounded-lg"
                         >
                           <IconPrint size={14} />
+                        </button>
+
+                        <button
+                          onClick={() => setDeleteTarget(c)}
+                          className="btn-sm bg-red-50 text-red-700 hover:bg-red-100 px-2.5 py-1.5 rounded-lg"
+                        >
+                          <IconDelete size={14} />
                         </button>
                       </div>
                     </td>
@@ -274,7 +492,7 @@ export default function Certificates() {
         </div>
       </div>
 
-      {/* Issue Modal */}
+      {/* ISSUE MODAL */}
       <Modal
         isOpen={modal === "add"}
         onClose={() => setModal(null)}
@@ -284,6 +502,7 @@ export default function Certificates() {
             <button onClick={() => setModal(null)} className="btn-secondary">
               Cancel
             </button>
+
             <button onClick={handleSave} className="btn-primary">
               Issue Certificate
             </button>
@@ -298,12 +517,13 @@ export default function Certificates() {
               value={form.type}
               onChange={(e) => {
                 const selectedType = e.target.value;
+
                 const config = CERTIFICATE_CONFIG[selectedType];
 
                 setForm({
                   ...EMPTY_FORM,
                   type: selectedType,
-                  fee: config.fee,
+                  fee: CERT_FEES[selectedType] || "0.00",
                   purpose: config.purposePlaceholder || "",
                 });
               }}
@@ -321,7 +541,7 @@ export default function Certificates() {
                 className="input-field"
                 value={form.residentId}
                 onChange={(e) => {
-                  const r = RESIDENTS.find((r) => r.id === e.target.value);
+                  const r = residents.find((r) => r.id === e.target.value);
 
                   setForm({
                     ...form,
@@ -332,9 +552,12 @@ export default function Certificates() {
               >
                 <option value="">-- Select Resident --</option>
 
-                {RESIDENTS.map((r) => (
+                {filteredResidents.map((r) => (
                   <option key={r.id} value={r.id}>
                     {r.firstName} {r.lastName}
+                    {form.type === "Solo Parent Certificate" &&
+                      " - Solo Parent"}
+                    {form.type === "Certificate of Indigency" && " - Indigent"}
                   </option>
                 ))}
               </select>
@@ -344,17 +567,38 @@ export default function Certificates() {
           {/* BUSINESS NAME */}
           {certConfig.fields.includes("businessName") && (
             <FormField label="Business Name" required>
-              <input
+              <select
                 className="input-field"
                 value={form.businessName}
-                onChange={(e) =>
+                onChange={(e) => {
+                  const business = businesses.find(
+                    (b) => b.id === e.target.value,
+                  );
+
                   setForm({
                     ...form,
-                    businessName: e.target.value,
-                  })
-                }
-                placeholder="Enter business name"
-              />
+
+                    // resident / owner
+                    residentId: business?.ownerId || "",
+                    residentName: business?.ownerName || "",
+
+                    // business details
+                    businessName: business?.businessName || "",
+                    businessAddress: business?.address || "",
+                    businessNature: business?.businessType || "",
+                    operatorName: business?.ownerName || "",
+                    expiryDate: business?.permitExpiry || "",
+                  });
+                }}
+              >
+                <option value="">-- Select Business --</option>
+
+                {businesses.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.businessName}
+                  </option>
+                ))}
+              </select>
             </FormField>
           )}
 
@@ -409,19 +653,79 @@ export default function Certificates() {
             </FormField>
           )}
 
-          {/* COMPLAINT AGAINST */}
-          {certConfig.fields.includes("complaintAgainst") && (
-            <FormField label="Complaint Against">
+          {/* COMPLAINT SELECTOR (AUTO-FILL FROM COMPLAINT LISTEN ONLY) */}
+          {certConfig.fields.includes("complainantName") && (
+            <FormField label="Select Complaint">
+              <select
+                className="input-field"
+                value={form.complaintId || ""}
+                onChange={(e) => {
+                  const selectedComplaint = complaints.find(
+                    (c) => c.id === e.target.value,
+                  );
+
+                  if (!selectedComplaint) return;
+
+                  setForm((prev) => ({
+                    ...prev,
+
+                    // complaint id
+                    complaintId: selectedComplaint.id || "",
+
+                    // complaint data
+                    complainantName: selectedComplaint.complainantName || "",
+
+                    respondentName: selectedComplaint.respondentName || "",
+
+                    complaintType: selectedComplaint.category || "",
+
+                    purpose: selectedComplaint.description || "",
+
+                    residentName: selectedComplaint.complainantName || "",
+                  }));
+                }}
+              >
+                <option value="">-- Select Complaint --</option>
+
+                {complaints.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.complainantName} vs {c.respondentName} ({c.category})
+                  </option>
+                ))}
+              </select>
+            </FormField>
+          )}
+
+          {/* COMPLAINANT NAME */}
+          {certConfig.fields.includes("complainantName") && (
+            <FormField label="Complainant Name">
               <input
                 className="input-field"
-                value={form.complaintAgainst}
+                value={form.complainantName || ""}
                 onChange={(e) =>
                   setForm({
                     ...form,
-                    complaintAgainst: e.target.value,
+                    complainantName: e.target.value,
                   })
                 }
-                placeholder="Respondent name"
+                placeholder="Complainant Name"
+              />
+            </FormField>
+          )}
+
+          {/* RESPONDENT NAME */}
+          {certConfig.fields.includes("respondentName") && (
+            <FormField label="Respondent Name">
+              <input
+                className="input-field"
+                value={form.respondentName || ""}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    respondentName: e.target.value,
+                  })
+                }
+                placeholder="Respondent Name"
               />
             </FormField>
           )}
@@ -431,14 +735,14 @@ export default function Certificates() {
             <FormField label="Complaint Type">
               <input
                 className="input-field"
-                value={form.complaintType}
+                value={form.complaintType || ""}
                 onChange={(e) =>
                   setForm({
                     ...form,
                     complaintType: e.target.value,
                   })
                 }
-                placeholder="Noise Complaint, Physical Injury..."
+                placeholder="Complaint Type"
               />
             </FormField>
           )}
@@ -508,16 +812,22 @@ export default function Certificates() {
 
             <FormField label="Fee">
               <input
-                className="input-field bg-gray-50"
-                value={`₱${form.fee}`}
-                disabled
+                type="number"
+                className="input-field"
+                value={form.fee}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    fee: e.target.value,
+                  })
+                }
               />
             </FormField>
           </div>
         </div>
       </Modal>
 
-      {/* View Modal */}
+      {/* VIEW MODAL */}
       <Modal
         isOpen={modal === "view"}
         onClose={() => setModal(null)}
@@ -546,20 +856,23 @@ export default function Certificates() {
                 className="flex justify-between text-sm border-b border-gray-50 pb-2"
               >
                 <span className="text-slate-500">{k}</span>
+
                 <span className="font-medium text-slate-800">{v}</span>
               </div>
             ))}
+
             <button
               onClick={() => openPrint(selected)}
               className="btn-primary w-full flex items-center justify-center gap-2 mt-2"
             >
-              <IconPrint size={16} /> Print Certificate
+              <IconPrint size={16} />
+              Print Certificate
             </button>
           </div>
         )}
       </Modal>
 
-      {/* Print Modal */}
+      {/* PRINT MODAL */}
       <Modal
         isOpen={modal === "print"}
         onClose={() => setModal(null)}
@@ -572,15 +885,18 @@ export default function Certificates() {
                 onClick={handlePrint}
                 className="btn-primary flex items-center gap-2"
               >
-                <IconPrint size={16} /> Print
+                <IconPrint size={16} />
+                Print
               </button>
             </div>
+
             {/* Preview */}
             <div className="preview-wrapper">
               <div className="preview-scale">
                 {renderTemplate(selected, barangayInfo)}
               </div>
             </div>
+
             {/* Actual print area */}
             <div className="print-area">
               {renderTemplate(selected, barangayInfo)}
@@ -588,7 +904,8 @@ export default function Certificates() {
           </div>
         )}
       </Modal>
-      {/* Edit official Modal */}
+
+      {/* EDIT OFFICIALS MODAL */}
       <Modal
         isOpen={modal === "officials"}
         onClose={() => setModal(null)}
@@ -659,6 +976,63 @@ export default function Certificates() {
           </FormField>
         </div>
       </Modal>
+      {/* DELETE CONFIRMATION MODAL */}
+      <Modal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        title="Delete Certificate"
+        footer={
+          <>
+            <button
+              onClick={() => setDeleteTarget(null)}
+              className="btn-secondary"
+            >
+              Cancel
+            </button>
+
+            <button
+              onClick={handleDelete}
+              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg"
+            >
+              Delete
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-2">
+          <p className="text-slate-700">
+            Are you sure you want to delete this certificate?
+          </p>
+
+          <div className="bg-slate-50 rounded-lg p-3 text-sm">
+            <p>
+              <span className="font-semibold">Resident:</span>{" "}
+              {deleteTarget?.residentName}
+            </p>
+
+            <p>
+              <span className="font-semibold">Type:</span> {deleteTarget?.type}
+            </p>
+
+            <p>
+              <span className="font-semibold">Purpose:</span>{" "}
+              {deleteTarget?.purpose}
+            </p>
+          </div>
+
+          <p className="text-red-600 text-sm">This action cannot be undone.</p>
+        </div>
+      </Modal>
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        onClose={() =>
+          setToast({
+            message: "",
+            type: "success",
+          })
+        }
+      />
     </div>
   );
 }

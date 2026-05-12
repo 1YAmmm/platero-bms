@@ -29,7 +29,8 @@ export const CERTIFICATE_CONFIG = {
   },
 
   "Complaint Certification": {
-    fee: "50.00",
-    fields: ["resident", "complaintAgainst", "complaintType", "purpose"],
+    fields: ["complainantName", "respondentName", "complaintType", "purpose"],
+
+    purposePlaceholder: "Enter complaint details",
   },
 };

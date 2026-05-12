@@ -1,5 +1,6 @@
 import { BARANGAY_INFO } from "../../data/mockData";
-
+import platerologo from "../../assets/image/platerologo.webp";
+import binancitylogo from "../../assets/image/Binancitylogo.webp";
 export default function CertificateHeader({
   title,
   subtitle,
@@ -33,7 +34,12 @@ export default function CertificateHeader({
           fontWeight: "bold",
         }}
       >
-        BP
+        <img
+          src={platerologo}
+          alt="Barangay Platero logo"
+          loading="lazy"
+          className="w-full h-full object-contain"
+        />
       </div>
 
       {/* RIGHT LOGO */}
@@ -55,7 +61,12 @@ export default function CertificateHeader({
           fontWeight: "bold",
         }}
       >
-        LOGO
+        <img
+          src={binancitylogo}
+          alt="Barangay Platero logo"
+          loading="lazy"
+          className="w-full h-full object-contain"
+        />
       </div>
 
       <p
