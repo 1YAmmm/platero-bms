@@ -56,11 +56,6 @@ export default function AdminDashboard() {
           </div>
 
           <div className="flex items-center gap-3">
-            <button className="relative p-2 text-slate-500 hover:text-blue-700 hover:bg-blue-50 rounded-xl transition">
-              <IconBell size={20} />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
-            </button>
-
             <div className="flex items-center gap-2 bg-blue-50 hover:bg-blue-100 rounded-2xl px-3 py-1.5 cursor-pointer">
               <div className="w-8 h-8 rounded-full bg-blue-800 flex items-center justify-center text-white">
                 <IconUser size={16} />

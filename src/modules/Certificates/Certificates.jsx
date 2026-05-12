@@ -24,6 +24,13 @@ import {
   IconSearch,
   IconInfo,
   IconDelete,
+  IconBusiness,
+  IconCertificate,
+  IconReports,
+  IconUsers,
+  IconUser,
+  IconAdmin,
+  IconComplaint,
 } from "../../assets/svg/Icons";
 
 import { CERTIFICATE_CONFIG } from "../../data/certificateConfig";
@@ -365,11 +372,11 @@ export default function Certificates() {
               <p className="text-xl mb-1">
                 {
                   {
-                    "Barangay Clearance": "📄",
-                    "Business Permit": "🏢",
-                    "Solo Parent Certificate": "👨‍👩‍👧",
-                    "Certificate of Indigency": "🏥",
-                    "Complaint Certification": "⚖️",
+                    "Barangay Clearance": <IconCertificate size={24} />,
+                    "Business Permit": <IconBusiness size={24} />,
+                    "Solo Parent Certificate": <IconUser size={24} />,
+                    "Certificate of Indigency": <IconUsers size={24} />,
+                    "Complaint Certification": <IconComplaint size={24} />,
                   }[t]
                 }
               </p>
