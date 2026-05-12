@@ -14,7 +14,11 @@
   }
 
   body {
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    font-family:
+      "Segoe UI",
+      system-ui,
+      -apple-system,
+      sans-serif;
     background-color: #f0f4f8;
     color: #1e293b;
     -webkit-font-smoothing: antialiased;
@@ -157,13 +161,25 @@
 
 /* Animations */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes slideIn {
-  from { opacity: 0; transform: translateX(-20px); }
-  to { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .animate-fade-in {
@@ -175,19 +191,119 @@
 }
 
 /* Scrollbar */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
 
 /* Print styles */
 @media print {
-  body * { visibility: hidden; }
-  .print-area, .print-area * { visibility: visible; }
-  .print-area { 
-    position: absolute; 
-    left: 0; top: 0; 
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
     width: 100%;
     display: block !important;
+  }
+}
+/* =========================================
+   CERTIFICATE PAPER
+========================================= */
+
+.certificate-paper {
+  width: 210mm;
+  min-height: 297mm;
+  margin: 0 auto;
+  background: white;
+  padding: 8px;
+  box-sizing: border-box;
+  font-family: "Times New Roman", serif;
+  color: #111;
+}
+
+.certificate-inner {
+  border: 3px solid #222;
+  min-height: calc(297mm - 16px);
+  position: relative;
+  padding-bottom: 120px;
+  box-sizing: border-box;
+}
+
+.certificate-body {
+  padding: 30px 50px;
+}
+
+/* =========================================
+   PRINT STYLES
+========================================= */
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+
+  .print-area {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    background: white;
+  }
+
+  .certificate-paper {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0;
+    padding: 0;
+  }
+
+  .certificate-inner {
+    border: 2px solid #000;
+  }
+}
+
+/* =========================================
+   MOBILE / MODAL PREVIEW
+========================================= */
+
+.preview-wrapper {
+  width: 100%;
+  overflow: auto;
+  background: #e2e8f0;
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.preview-scale {
+  transform: scale(0.75);
+  transform-origin: top center;
+  width: fit-content;
+  margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+  .preview-scale {
+    transform: scale(0.5);
   }
 }

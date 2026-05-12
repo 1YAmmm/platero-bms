@@ -148,7 +148,7 @@ function ResidentForm({ form, setForm }) {
 
 export default function Residents() {
   const [residents, setResidents] = useState([]);
-  const [search, setSearch] = useState("");
+
   const [modal, setModal] = useState(null);
   const [selected, setSelected] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -373,6 +373,152 @@ export default function Residents() {
           <IconPlus size={18} />
           Add Resident
         </button>
+      </div>
+
+      {/* TABLE */}
+      {/* FILTERS + SEARCH */}
+      <div className="glass-card p-4 mb-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* SEARCH */}
+          <div className="relative lg:col-span-2">
+            <IconSearch
+              size={18}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+            />
+
+            <input
+              type="text"
+              placeholder="Search resident..."
+              value={filters.search}
+              onChange={(e) =>
+                setFilters((prev) => ({
+                  ...prev,
+                  search: e.target.value,
+                }))
+              }
+              className="input-field pl-10"
+            />
+          </div>
+
+          {/* GENDER */}
+          <select
+            className="input-field"
+            value={filters.gender}
+            onChange={(e) =>
+              setFilters((prev) => ({
+                ...prev,
+                gender: e.target.value,
+              }))
+            }
+          >
+            <option value="">All Gender</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+          </select>
+
+          {/* CIVIL STATUS */}
+          <select
+            className="input-field"
+            value={filters.civilStatus}
+            onChange={(e) =>
+              setFilters((prev) => ({
+                ...prev,
+                civilStatus: e.target.value,
+              }))
+            }
+          >
+            <option value="">Civil Status</option>
+            <option value="Single">Single</option>
+            <option value="Married">Married</option>
+            <option value="Widower">Widower</option>
+            <option value="Separated">Separated</option>
+          </select>
+
+          {/* PUROK */}
+          <select
+            className="input-field"
+            value={filters.purok}
+            onChange={(e) =>
+              setFilters((prev) => ({
+                ...prev,
+                purok: e.target.value,
+              }))
+            }
+          >
+            <option value="">All Purok</option>
+            <option value="Purok 1">Purok 1</option>
+            <option value="Purok 2">Purok 2</option>
+            <option value="Purok 3">Purok 3</option>
+            <option value="Purok 4">Purok 4</option>
+            <option value="Purok 5">Purok 5</option>
+          </select>
+
+          {/* CLASSIFICATION */}
+          <select
+            className="input-field"
+            value={filters.classification}
+            onChange={(e) =>
+              setFilters((prev) => ({
+                ...prev,
+                classification: e.target.value,
+              }))
+            }
+          >
+            <option value="">Classification</option>
+            <option value="soloParent">Solo Parent</option>
+            <option value="indigent">Indigent</option>
+            <option value="senior">Senior Citizen</option>
+            <option value="pwd">PWD</option>
+          </select>
+
+          {/* STATUS */}
+          <select
+            className="input-field"
+            value={filters.status}
+            onChange={(e) =>
+              setFilters((prev) => ({
+                ...prev,
+                status: e.target.value,
+              }))
+            }
+          >
+            <option value="">All Status</option>
+            <option value="Active">Active</option>
+            <option value="Inactive">Inactive</option>
+          </select>
+
+          {/* AGE */}
+          <input
+            type="number"
+            placeholder="Search age..."
+            className="input-field"
+            value={filters.age}
+            onChange={(e) =>
+              setFilters((prev) => ({
+                ...prev,
+                age: e.target.value,
+              }))
+            }
+          />
+
+          {/* RESET */}
+          <button
+            onClick={() =>
+              setFilters({
+                search: "",
+                gender: "",
+                civilStatus: "",
+                purok: "",
+                status: "",
+                classification: "",
+                age: "",
+              })
+            }
+            className="bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl px-4 py-2 font-medium transition-all"
+          >
+            Reset Filters
+          </button>
+        </div>
       </div>
 
       {/* TABLE */}
