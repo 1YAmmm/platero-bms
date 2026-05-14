@@ -22,6 +22,7 @@ const EMPTY_FORM = {
   firstName: "",
   lastName: "",
   middleName: "",
+  suffix: "",
   birthdate: "",
   gender: "Male",
   civilStatus: "Single",
@@ -46,6 +47,7 @@ function ResidentForm({ form, setForm }) {
         ["firstName", "First Name"],
         ["lastName", "Last Name"],
         ["middleName", "Middle Name"],
+        ["suffix", "Suffix"],
         ["birthdate", "Birthdate", "date"],
         ["contactNumber", "Contact Number"],
         ["email", "Email"],
@@ -297,7 +299,7 @@ export default function Residents() {
       render: (v, r) => (
         <div>
           <p className="font-semibold text-slate-800">
-            {r.firstName} {r.lastName}
+            {`${r.firstName} ${r.lastName} ${r.suffix || ""}`}
           </p>
           <p className="text-xs text-slate-400">{r.purok}</p>
         </div>
@@ -558,7 +560,8 @@ export default function Residents() {
             <div className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-50 to-slate-100 rounded-xl">
               <div>
                 <h2 className="text-lg font-bold text-slate-800">
-                  {selected.firstName} {selected.middleName} {selected.lastName}
+                  {selected.firstName} {selected.middleName} {selected.lastName}{" "}
+                  {selected.suffix}
                 </h2>
                 <p className="text-sm text-slate-500">
                   Resident ID: {selected.id}
@@ -709,7 +712,8 @@ export default function Residents() {
         <p>
           Are you sure you want to delete{" "}
           <b>
-            {deleteTarget?.firstName} {deleteTarget?.lastName}
+            {deleteTarget?.firstName} {deleteTarget?.lastName}{" "}
+            {deleteTarget?.suffix}
           </b>
           ?
         </p>

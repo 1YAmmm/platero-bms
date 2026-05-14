@@ -2,7 +2,8 @@ export function FormField({ label, children, required }) {
   return (
     <div>
       <label className="label">
-        {label} {required && <span className="text-red-500 normal-case">*</span>}
+        {label}{" "}
+        {required && <span className="text-red-500 normal-case">*</span>}
       </label>
       {children}
     </div>
