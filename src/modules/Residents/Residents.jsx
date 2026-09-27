@@ -1,41 +1,44 @@
-import { useEffect, useState } from "react";
-import Table from "../../components/Table";
-import Modal from "../../components/Modal";
-import Toast from "../../components/Toast";
-import { FormField } from "../../components/Form";
-import { calculateAge } from "../../ultils/calculateAge";
+import { useEffect, useState } from 'react';
+import Table from '../../components/Table';
+import Modal from '../../components/Modal';
+import Toast from '../../components/Toast';
+import { FormField } from '../../components/Form';
+import { calculateAge } from '../../ultils/calculateAge';
 import {
   createResident,
   listenResidents,
   updateResident,
   deleteResident,
-} from "../../service/resident.service";
+} from '../../service/resident.service';
 import {
   IconPlus,
   IconEdit,
   IconDelete,
   IconSearch,
   IconUser,
-} from "../../assets/svg/Icons";
+} from '../../assets/svg/Icons';
 
 const EMPTY_FORM = {
-  firstName: "",
-  lastName: "",
-  middleName: "",
-  suffix: "",
-  birthdate: "",
-  gender: "Male",
-  civilStatus: "Single",
-  purok: "Purok 1",
-  contactNumber: "",
-  email: "",
-  occupation: "",
-  voterStatus: "Registered Voter",
+  firstName: '',
+  lastName: '',
+  middleName: '',
+  suffix: '',
+  birthdate: '',
+  gender: 'Male',
+  civilStatus: 'Single',
+  purok: 'Purok 1',
+  contactNumber: '',
+  email: '',
+  occupation: '',
+  voterStatus: 'Registered Voter',
   soloParent: false,
   indigent: false,
   senior: false,
   pwd: false,
 };
+
+// Contact number must be exactly 11 digits and start with "09"
+const CONTACT_REGEX = /^09\d{9}$/;
 
 /* =========================
    STABLE FORM COMPONENT
@@ -44,20 +47,19 @@ function ResidentForm({ form, setForm }) {
   return (
     <div className="grid grid-cols-2 gap-4">
       {[
-        ["firstName", "First Name"],
-        ["lastName", "Last Name"],
-        ["middleName", "Middle Name"],
-        ["suffix", "Suffix"],
-        ["birthdate", "Birthdate", "date"],
-        ["contactNumber", "Contact Number"],
-        ["email", "Email"],
-        ["occupation", "Occupation"],
-      ].map(([key, label, type = "text"]) => (
+        ['firstName', 'First Name'],
+        ['lastName', 'Last Name'],
+        ['middleName', 'Middle Name'],
+        ['suffix', 'Suffix'],
+        ['birthdate', 'Birthdate', 'date'],
+        ['email', 'Email'],
+        ['occupation', 'Occupation'],
+      ].map(([key, label, type = 'text']) => (
         <FormField key={key} label={label}>
           <input
             type={type}
             className="input-field"
-            value={form[key] || ""}
+            value={form[key] || ''}
             onChange={(e) =>
               setForm((prev) => ({
                 ...prev,
@@ -67,6 +69,30 @@ function ResidentForm({ form, setForm }) {
           />
         </FormField>
       ))}
+
+      {/* CONTACT NUMBER - digits only, starts with 09, max 11 digits */}
+      <FormField label="Contact Number">
+        <input
+          type="text"
+          inputMode="numeric"
+          maxLength={11}
+          placeholder="09XXXXXXXXX"
+          className="input-field"
+          value={form.contactNumber || ''}
+          onChange={(e) => {
+            const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 11);
+            setForm((prev) => ({
+              ...prev,
+              contactNumber: digitsOnly,
+            }));
+          }}
+        />
+        {form.contactNumber && !CONTACT_REGEX.test(form.contactNumber) && (
+          <p className="text-xs text-red-500 mt-1">
+            Must be 11 digits starting with 09.
+          </p>
+        )}
+      </FormField>
 
       <FormField label="Gender">
         <select
@@ -113,7 +139,7 @@ function ResidentForm({ form, setForm }) {
             }))
           }
         >
-          {["Purok 1", "Purok 2", "Purok 3", "Purok 4", "Purok 5"].map((p) => (
+          {['Purok 1', 'Purok 2', 'Purok 3', 'Purok 4', 'Purok 5'].map((p) => (
             <option key={p}>{p}</option>
           ))}
         </select>
@@ -123,10 +149,10 @@ function ResidentForm({ form, setForm }) {
         <label className="label mb-2">Special Classification</label>
         <div className="flex flex-wrap gap-4">
           {[
-            ["soloParent", "Solo Parent"],
-            ["indigent", "Indigent"],
-            ["senior", "Senior Citizen"],
-            ["pwd", "PWD"],
+            ['soloParent', 'Solo Parent'],
+            ['indigent', 'Indigent'],
+            ['senior', 'Senior Citizen'],
+            ['pwd', 'PWD'],
           ].map(([k, l]) => (
             <label key={k} className="flex items-center gap-2">
               <input
@@ -157,10 +183,10 @@ export default function Residents() {
   const [deleteTarget, setDeleteTarget] = useState(null);
 
   /* ======================
-     TOAST STATE (ADDED)
+     TOAST STATE
   ====================== */
-  const [toastMessage, setToastMessage] = useState("");
-  const [toastType, setToastType] = useState("success");
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState('success');
 
   /* ======================
      FIREBASE REALTIME READ
@@ -171,13 +197,12 @@ export default function Residents() {
   }, []);
 
   const [filters, setFilters] = useState({
-    search: "",
-    gender: "",
-    civilStatus: "",
-    purok: "",
-    status: "",
-    classification: "",
-    age: "",
+    search: '',
+    gender: '',
+    civilStatus: '',
+    purok: '',
+    classification: '',
+    age: '',
   });
 
   /* ======================
@@ -205,13 +230,11 @@ export default function Residents() {
 
     const matchesPurok = filters.purok ? r.purok === filters.purok : true;
 
-    const matchesStatus = filters.status ? r.status === filters.status : true;
-
     const matchesClassification = filters.classification
-      ? (filters.classification === "soloParent" && r.soloParent) ||
-        (filters.classification === "indigent" && r.indigent) ||
-        (filters.classification === "senior" && r.senior) ||
-        (filters.classification === "pwd" && r.pwd)
+      ? (filters.classification === 'soloParent' && r.soloParent) ||
+        (filters.classification === 'indigent' && r.indigent) ||
+        (filters.classification === 'senior' && r.senior) ||
+        (filters.classification === 'pwd' && r.pwd)
       : true;
 
     return (
@@ -220,7 +243,6 @@ export default function Residents() {
       matchesGender &&
       matchesCivilStatus &&
       matchesPurok &&
-      matchesStatus &&
       matchesClassification
     );
   });
@@ -230,41 +252,46 @@ export default function Residents() {
   ====================== */
   const openAdd = () => {
     setForm(EMPTY_FORM);
-    setModal("add");
+    setModal('add');
   };
 
   const openEdit = (r) => {
     setForm(r);
     setSelected(r);
-    setModal("edit");
+    setModal('edit');
   };
 
   const openView = (r) => {
     setSelected(r);
-    setModal("view");
+    setModal('view');
   };
 
   /* ======================
      SAVE (CREATE / UPDATE)
   ====================== */
   const handleSave = async () => {
+    if (!CONTACT_REGEX.test(form.contactNumber || '')) {
+      setToastType('error');
+      setToastMessage('Contact number must be 11 digits starting with 09.');
+      return;
+    }
+
     const age = calculateAge(form.birthdate);
 
     const payload = {
       ...form,
       age,
-      status: "Active",
-      registeredDate: new Date().toISOString().split("T")[0],
+      registeredDate: new Date().toISOString().split('T')[0],
     };
 
-    if (modal === "add") {
+    if (modal === 'add') {
       await createResident(payload);
-      setToastType("success");
-      setToastMessage("Resident successfully registered!");
+      setToastType('success');
+      setToastMessage('Resident successfully registered!');
     } else {
       await updateResident(selected.id, payload);
-      setToastType("success");
-      setToastMessage("Resident updated successfully!");
+      setToastType('success');
+      setToastMessage('Resident updated successfully!');
     }
 
     setModal(null);
@@ -277,8 +304,8 @@ export default function Residents() {
   ====================== */
   const handleDelete = async () => {
     await deleteResident(deleteTarget.id);
-    setToastType("success");
-    setToastMessage("Resident deleted successfully!");
+    setToastType('success');
+    setToastMessage('Resident deleted successfully!');
     setDeleteTarget(null);
   };
 
@@ -287,42 +314,31 @@ export default function Residents() {
   ====================== */
   const columns = [
     {
-      key: "id",
-      label: "ID",
+      key: 'id',
+      label: 'ID',
       render: (v) => (
         <span className="badge badge-blue font-mono text-xs">{v}</span>
       ),
     },
     {
-      key: "lastName",
-      label: "Name",
+      key: 'lastName',
+      label: 'Name',
       render: (v, r) => (
         <div>
           <p className="font-semibold text-slate-800">
-            {`${r.firstName} ${r.lastName} ${r.suffix || ""}`}
+            {`${r.firstName} ${r.lastName} ${r.suffix || ''}`}
           </p>
           <p className="text-xs text-slate-400">{r.purok}</p>
         </div>
       ),
     },
-    { key: "gender", label: "Gender" },
-    { key: "age", label: "Age" },
-    { key: "civilStatus", label: "Civil Status" },
-    { key: "contactNumber", label: "Contact" },
+    { key: 'gender', label: 'Gender' },
+    { key: 'age', label: 'Age' },
+    { key: 'civilStatus', label: 'Civil Status' },
+    { key: 'contactNumber', label: 'Contact' },
     {
-      key: "status",
-      label: "Status",
-      render: (v) => (
-        <span
-          className={`badge ${v === "Active" ? "badge-green" : "badge-gray"}`}
-        >
-          {v}
-        </span>
-      ),
-    },
-    {
-      key: "actions",
-      label: "Actions",
+      key: 'actions',
+      label: 'Actions',
       render: (_, r) => (
         <div className="flex gap-2">
           <button
@@ -352,11 +368,10 @@ export default function Residents() {
 
   return (
     <div className="animate-fade-in">
-      {/* ✅ TOAST (ADDED) */}
       <Toast
         message={toastMessage}
         type={toastType}
-        onClose={() => setToastMessage("")}
+        onClose={() => setToastMessage('')}
       />
 
       {/* HEADER */}
@@ -377,7 +392,6 @@ export default function Residents() {
         </button>
       </div>
 
-      {/* TABLE */}
       {/* FILTERS + SEARCH */}
       <div className="glass-card p-4 mb-5">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -473,22 +487,6 @@ export default function Residents() {
             <option value="pwd">PWD</option>
           </select>
 
-          {/* STATUS */}
-          <select
-            className="input-field"
-            value={filters.status}
-            onChange={(e) =>
-              setFilters((prev) => ({
-                ...prev,
-                status: e.target.value,
-              }))
-            }
-          >
-            <option value="">All Status</option>
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
-          </select>
-
           {/* AGE */}
           <input
             type="number"
@@ -507,13 +505,12 @@ export default function Residents() {
           <button
             onClick={() =>
               setFilters({
-                search: "",
-                gender: "",
-                civilStatus: "",
-                purok: "",
-                status: "",
-                classification: "",
-                age: "",
+                search: '',
+                gender: '',
+                civilStatus: '',
+                purok: '',
+                classification: '',
+                age: '',
               })
             }
             className="bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl px-4 py-2 font-medium transition-all"
@@ -528,19 +525,18 @@ export default function Residents() {
         <Table columns={columns} data={filtered} />
       </div>
 
-      {/* MODALS (UNCHANGED) */}
       {/* ADD / EDIT MODAL */}
       <Modal
-        isOpen={modal === "add" || modal === "edit"}
+        isOpen={modal === 'add' || modal === 'edit'}
         onClose={() => setModal(null)}
-        title={modal === "add" ? "Register Resident" : "Edit Resident"}
+        title={modal === 'add' ? 'Register Resident' : 'Edit Resident'}
         footer={
           <>
             <button onClick={() => setModal(null)} className="btn-secondary">
               Cancel
             </button>
             <button onClick={handleSave} className="btn-primary">
-              {modal === "add" ? "Register" : "Save Changes"}
+              {modal === 'add' ? 'Register' : 'Save Changes'}
             </button>
           </>
         }
@@ -550,7 +546,7 @@ export default function Residents() {
 
       {/* VIEW MODAL */}
       <Modal
-        isOpen={modal === "view"}
+        isOpen={modal === 'view'}
         onClose={() => setModal(null)}
         title="Resident Profile"
       >
@@ -560,23 +556,13 @@ export default function Residents() {
             <div className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-50 to-slate-100 rounded-xl">
               <div>
                 <h2 className="text-lg font-bold text-slate-800">
-                  {selected.firstName} {selected.middleName} {selected.lastName}{" "}
+                  {selected.firstName} {selected.middleName} {selected.lastName}{' '}
                   {selected.suffix}
                 </h2>
                 <p className="text-sm text-slate-500">
                   Resident ID: {selected.id}
                 </p>
               </div>
-
-              <span
-                className={`px-3 py-1 text-xs rounded-full font-semibold ${
-                  selected.status === "Active"
-                    ? "bg-green-100 text-green-700"
-                    : "bg-gray-200 text-gray-600"
-                }`}
-              >
-                {selected.status}
-              </span>
             </div>
 
             {/* GRID SECTIONS */}
@@ -589,22 +575,22 @@ export default function Residents() {
 
                 <div className="space-y-2 text-sm">
                   <p>
-                    <span className="text-slate-500">Birthdate:</span>{" "}
+                    <span className="text-slate-500">Birthdate:</span>{' '}
                     {selected.birthdate}
                   </p>
                   <p>
                     <span className="text-slate-500">Age:</span> {selected.age}
                   </p>
                   <p>
-                    <span className="text-slate-500">Gender:</span>{" "}
+                    <span className="text-slate-500">Gender:</span>{' '}
                     {selected.gender}
                   </p>
                   <p>
-                    <span className="text-slate-500">Civil Status:</span>{" "}
+                    <span className="text-slate-500">Civil Status:</span>{' '}
                     {selected.civilStatus}
                   </p>
                   <p>
-                    <span className="text-slate-500">Occupation:</span>{" "}
+                    <span className="text-slate-500">Occupation:</span>{' '}
                     {selected.occupation}
                   </p>
                 </div>
@@ -618,11 +604,11 @@ export default function Residents() {
 
                 <div className="space-y-2 text-sm">
                   <p>
-                    <span className="text-slate-500">Phone:</span>{" "}
+                    <span className="text-slate-500">Phone:</span>{' '}
                     {selected.contactNumber}
                   </p>
                   <p>
-                    <span className="text-slate-500">Email:</span>{" "}
+                    <span className="text-slate-500">Email:</span>{' '}
                     {selected.email}
                   </p>
                 </div>
@@ -636,11 +622,11 @@ export default function Residents() {
 
                 <div className="space-y-2 text-sm">
                   <p>
-                    <span className="text-slate-500">Purok:</span>{" "}
+                    <span className="text-slate-500">Purok:</span>{' '}
                     {selected.purok}
                   </p>
                   <p>
-                    <span className="text-slate-500">Registered:</span>{" "}
+                    <span className="text-slate-500">Registered:</span>{' '}
                     {selected.registeredDate}
                   </p>
                 </div>
@@ -674,7 +660,6 @@ export default function Residents() {
                     </span>
                   )}
 
-                  {/* 👇 THIS IS THE FIX */}
                   {!selected.soloParent &&
                     !selected.indigent &&
                     !selected.senior &&
@@ -710,9 +695,9 @@ export default function Residents() {
         }
       >
         <p>
-          Are you sure you want to delete{" "}
+          Are you sure you want to delete{' '}
           <b>
-            {deleteTarget?.firstName} {deleteTarget?.lastName}{" "}
+            {deleteTarget?.firstName} {deleteTarget?.lastName}{' '}
             {deleteTarget?.suffix}
           </b>
           ?

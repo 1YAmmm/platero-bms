@@ -1,48 +1,51 @@
-import { useEffect, useState } from "react";
-import Table from "../../components/Table";
-import Modal from "../../components/Modal";
-import { FormField } from "../../components/Form";
-import { formatDate } from "../../data/mockData";
-import Toast from "../../components/Toast";
+import { useEffect, useState } from 'react';
+import Table from '../../components/Table';
+import Modal from '../../components/Modal';
+import { FormField } from '../../components/Form';
+import { formatDate } from '../../data/mockData';
+import Toast from '../../components/Toast';
 import {
   IconPlus,
   IconEdit,
   IconDelete,
   IconSearch,
   IconInfo,
-} from "../../assets/svg/Icons";
+} from '../../assets/svg/Icons';
 
 import {
   createBusiness,
   listenBusinesses,
   updateBusiness,
   deleteBusiness,
-} from "../../service/business.service";
+} from '../../service/business.service';
 
 const EMPTY_FORM = {
-  businessName: "",
-  ownerName: "",
-  businessType: "Retail",
-  category: "",
-  address: "",
-  contactNumber: "",
-  permitNumber: "",
-  permitStatus: "Active",
-  permitExpiry: "",
-  capitalInvestment: "",
-  employeeCount: "",
+  businessName: '',
+  ownerName: '',
+  businessType: 'Retail',
+  category: '',
+  address: '',
+  contactNumber: '',
+  permitNumber: '',
+  permitStatus: 'Active',
+  permitExpiry: '',
+  capitalInvestment: '',
+  employeeCount: '',
 };
 
 const BIZ_TYPES = [
-  "Retail",
-  "Food Service",
-  "Automotive",
-  "Manufacturing",
-  "Services",
-  "Agriculture",
-  "Construction",
-  "Other",
+  'Retail',
+  'Food Service',
+  'Automotive',
+  'Manufacturing',
+  'Services',
+  'Agriculture',
+  'Construction',
+  'Other',
 ];
+
+// Contact number must be exactly 11 digits and start with "09"
+const CONTACT_REGEX = /^09\d{9}$/;
 
 /* ======================
    FORM COMPONENT
@@ -112,14 +115,23 @@ function BizForm({ form, setForm }) {
       <FormField label="Contact Number">
         <input
           className="input-field"
+          inputMode="numeric"
+          maxLength={11}
+          placeholder="09XXXXXXXXX"
           value={form.contactNumber}
-          onChange={(e) =>
+          onChange={(e) => {
+            const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 11);
             setForm({
               ...form,
-              contactNumber: e.target.value,
-            })
-          }
+              contactNumber: digitsOnly,
+            });
+          }}
         />
+        {form.contactNumber && !CONTACT_REGEX.test(form.contactNumber) && (
+          <p className="text-xs text-red-500 mt-1">
+            Must be 11 digits starting with 09.
+          </p>
+        )}
       </FormField>
 
       <div className="col-span-2">
@@ -217,12 +229,12 @@ function BizForm({ form, setForm }) {
 ====================== */
 export default function Businesses() {
   const [businesses, setBusinesses] = useState([]);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState('');
   const [modal, setModal] = useState(null);
   const [selected, setSelected] = useState(null);
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [filter, setFilter] = useState("All");
+  const [filter, setFilter] = useState('All');
 
   // ✅ TOAST STATE ADDED
   const [toast, setToast] = useState(null);
@@ -241,7 +253,7 @@ export default function Businesses() {
         .toLowerCase()
         .includes(search.toLowerCase());
 
-    const matchFilter = filter === "All" || b.permitStatus === filter;
+    const matchFilter = filter === 'All' || b.permitStatus === filter;
 
     return matchSearch && matchFilter;
   });
@@ -249,49 +261,57 @@ export default function Businesses() {
   const openAdd = () => {
     setForm({ ...EMPTY_FORM });
     setSelected(null);
-    setModal("add");
+    setModal('add');
   };
 
   const openEdit = (b) => {
     setForm({
-      businessName: b.businessName || "",
-      ownerName: b.ownerName || "",
-      businessType: b.businessType || "Retail",
-      category: b.category || "",
-      address: b.address || "",
-      contactNumber: b.contactNumber || "",
-      permitNumber: b.permitNumber || "",
-      permitStatus: b.permitStatus || "Active",
-      permitExpiry: b.permitExpiry || "",
-      capitalInvestment: b.capitalInvestment || "",
-      employeeCount: b.employeeCount || "",
+      businessName: b.businessName || '',
+      ownerName: b.ownerName || '',
+      businessType: b.businessType || 'Retail',
+      category: b.category || '',
+      address: b.address || '',
+      contactNumber: b.contactNumber || '',
+      permitNumber: b.permitNumber || '',
+      permitStatus: b.permitStatus || 'Active',
+      permitExpiry: b.permitExpiry || '',
+      capitalInvestment: b.capitalInvestment || '',
+      employeeCount: b.employeeCount || '',
     });
 
     setSelected(b);
-    setModal("edit");
+    setModal('edit');
   };
 
   /* ======================
      SAVE (WITH TOAST)
   ====================== */
   const handleSave = async () => {
+    if (!CONTACT_REGEX.test(form.contactNumber || '')) {
+      setToast({
+        message: 'Contact number must be 11 digits starting with 09.',
+        type: 'error',
+      });
+      return;
+    }
+
     try {
-      if (modal === "add") {
+      if (modal === 'add') {
         await createBusiness({
           ...form,
-          registeredDate: new Date().toISOString().split("T")[0],
+          registeredDate: new Date().toISOString().split('T')[0],
         });
 
         setToast({
-          message: "Business successfully registered!",
-          type: "success",
+          message: 'Business successfully registered!',
+          type: 'success',
         });
-      } else if (modal === "edit" && selected) {
+      } else if (modal === 'edit' && selected) {
         await updateBusiness(selected.id, form);
 
         setToast({
-          message: "Business updated successfully!",
-          type: "success",
+          message: 'Business updated successfully!',
+          type: 'success',
         });
       }
 
@@ -299,7 +319,7 @@ export default function Businesses() {
       setForm({ ...EMPTY_FORM });
       setSelected(null);
     } catch (error) {
-      setToast({ message: "Failed to save business", type: "error" });
+      setToast({ message: 'Failed to save business', type: 'error' });
     }
   };
 
@@ -312,35 +332,35 @@ export default function Businesses() {
         await deleteBusiness(deleteTarget.id);
 
         setToast({
-          message: "Business deleted successfully!",
-          type: "success",
+          message: 'Business deleted successfully!',
+          type: 'success',
         });
       }
 
       setDeleteTarget(null);
     } catch (error) {
-      setToast({ message: "Failed to delete business", type: "error" });
+      setToast({ message: 'Failed to delete business', type: 'error' });
     }
   };
 
   const statusBadge = (s) =>
     ({
-      Active: "badge-green",
-      Expired: "badge-red",
-      Renewed: "badge-yellow",
-    })[s] || "badge-gray";
+      Active: 'badge-green',
+      Expired: 'badge-red',
+      Renewed: 'badge-yellow',
+    })[s] || 'badge-gray';
 
   const columns = [
     {
-      key: "id",
-      label: "ID",
+      key: 'id',
+      label: 'ID',
       render: (v) => (
         <span className="font-mono text-xs text-slate-500">{v}</span>
       ),
     },
     {
-      key: "businessName",
-      label: "Business",
+      key: 'businessName',
+      label: 'Business',
       render: (v, r) => (
         <div>
           <p className="font-semibold text-slate-800">{v}</p>
@@ -348,28 +368,28 @@ export default function Businesses() {
         </div>
       ),
     },
-    { key: "ownerName", label: "Owner" },
-    { key: "businessType", label: "Type" },
-    { key: "permitNumber", label: "Permit No." },
+    { key: 'ownerName', label: 'Owner' },
+    { key: 'businessType', label: 'Type' },
+    { key: 'permitNumber', label: 'Permit No.' },
     {
-      key: "permitStatus",
-      label: "Status",
+      key: 'permitStatus',
+      label: 'Status',
       render: (v) => <span className={`badge ${statusBadge(v)}`}>{v}</span>,
     },
     {
-      key: "permitExpiry",
-      label: "Expires",
+      key: 'permitExpiry',
+      label: 'Expires',
       render: (v) => formatDate(v),
     },
     {
-      key: "id",
-      label: "Actions",
+      key: 'id',
+      label: 'Actions',
       render: (_, r) => (
         <div className="flex gap-1">
           <button
             onClick={() => {
               setSelected(r);
-              setModal("view");
+              setModal('view');
             }}
             className="btn-sm bg-blue-50 text-blue-700 hover:bg-blue-100 px-2.5 py-1.5 rounded-lg"
           >
@@ -436,14 +456,14 @@ export default function Businesses() {
         </div>
 
         <div className="flex gap-2">
-          {["All", "Active", "Expired", "Renewed"].map((s) => (
+          {['All', 'Active', 'Expired', 'Renewed'].map((s) => (
             <button
               key={s}
               onClick={() => setFilter(s)}
               className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                 filter === s
-                  ? "bg-blue-800 text-white"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  ? 'bg-blue-800 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
               {s}
@@ -462,10 +482,10 @@ export default function Businesses() {
 
       {/* ADD / EDIT MODAL */}
       <Modal
-        isOpen={modal === "add" || modal === "edit"}
+        isOpen={modal === 'add' || modal === 'edit'}
         onClose={() => setModal(null)}
         title={
-          modal === "add" ? "Register New Business" : "Edit Business Record"
+          modal === 'add' ? 'Register New Business' : 'Edit Business Record'
         }
         footer={
           <>
@@ -474,7 +494,7 @@ export default function Businesses() {
             </button>
 
             <button onClick={handleSave} className="btn-primary">
-              {modal === "add" ? "Register" : "Save"}
+              {modal === 'add' ? 'Register' : 'Save'}
             </button>
           </>
         }
@@ -503,14 +523,14 @@ export default function Businesses() {
         }
       >
         <p className="text-slate-600">
-          Are you sure you want to remove{" "}
+          Are you sure you want to remove{' '}
           <strong>{deleteTarget?.businessName}</strong>?
         </p>
       </Modal>
 
       {/* VIEW MODAL */}
       <Modal
-        isOpen={modal === "view"}
+        isOpen={modal === 'view'}
         onClose={() => {
           setModal(null);
           setSelected(null);

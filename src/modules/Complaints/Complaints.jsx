@@ -1,57 +1,60 @@
-import { useState, useCallback, useEffect } from "react";
-import Table from "../../components/Table";
-import Modal from "../../components/Modal";
-import Toast from "../../components/Toast";
+import { useState, useCallback, useEffect } from 'react';
+import Table from '../../components/Table';
+import Modal from '../../components/Modal';
+import Toast from '../../components/Toast';
 import {
   createComplaint,
   listenComplaints,
   updateComplaint,
   deleteComplaint,
-} from "../../service/complaints.service";
+} from '../../service/complaints.service';
 
-import { FormField } from "../../components/Form";
+import { FormField } from '../../components/Form';
 import {
   IconPlus,
   IconEdit,
   IconSearch,
   IconEye,
   IconDelete,
-} from "../../assets/svg/Icons";
+} from '../../assets/svg/Icons';
 
 const CATEGORIES = [
-  "Noise Disturbance",
-  "Waste Management",
-  "Property Damage",
-  "Domestic Dispute",
-  "Theft",
-  "Illegal Construction",
-  "Water/Flooding",
-  "Other",
+  'Noise Disturbance',
+  'Waste Management',
+  'Property Damage',
+  'Domestic Dispute',
+  'Theft',
+  'Illegal Construction',
+  'Water/Flooding',
+  'Other',
 ];
 
-const STATUSES = ["Pending", "Under Investigation", "Resolved", "Dismissed"];
-const PRIORITIES = ["Low", "Medium", "High", "Urgent"];
+const STATUSES = ['Pending', 'Under Investigation', 'Resolved', 'Dismissed'];
+const PRIORITIES = ['Low', 'Medium', 'High', 'Urgent'];
+
+// Contact number must be exactly 11 digits and start with "09"
+const CONTACT_REGEX = /^09\d{9}$/;
 
 const EMPTY_FORM = {
-  complainantName: "",
-  complainantAddress: "",
-  complainantContact: "",
-  respondentName: "",
-  category: "Noise Disturbance",
-  description: "",
-  status: "Pending",
-  priority: "Medium",
-  assignedTo: "",
-  notes: "",
-  dateFiled: new Date().toISOString().split("T")[0],
-  dateResolved: "",
+  complainantName: '',
+  complainantAddress: '',
+  complainantContact: '',
+  respondentName: '',
+  category: 'Noise Disturbance',
+  description: '',
+  status: 'Pending',
+  priority: 'Medium',
+  assignedTo: '',
+  notes: '',
+  dateFiled: new Date().toISOString().split('T')[0],
+  dateResolved: '',
 };
 
 export default function Complaints() {
   const [complaints, setComplaints] = useState([]);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
-  const [priorityFilter, setPriorityFilter] = useState("All");
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [priorityFilter, setPriorityFilter] = useState('All');
   const [modal, setModal] = useState(null);
   const [selected, setSelected] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -59,16 +62,16 @@ export default function Complaints() {
 
   /* ================= TOAST ================= */
   const [toast, setToast] = useState({
-    message: "",
-    type: "success",
+    message: '',
+    type: 'success',
   });
 
-  const showToast = (message, type = "success") => {
+  const showToast = (message, type = 'success') => {
     setToast({ message, type });
   };
 
   const closeToast = () => {
-    setToast({ message: "", type: "success" });
+    setToast({ message: '', type: 'success' });
   };
 
   /* ================= FIREBASE LISTENER ================= */
@@ -87,9 +90,9 @@ export default function Complaints() {
         .toLowerCase()
         .includes(search.toLowerCase());
 
-    const statusMatch = statusFilter === "All" || c.status === statusFilter;
+    const statusMatch = statusFilter === 'All' || c.status === statusFilter;
     const priorityMatch =
-      priorityFilter === "All" || c.priority === priorityFilter;
+      priorityFilter === 'All' || c.priority === priorityFilter;
 
     return textMatch && statusMatch && priorityMatch;
   });
@@ -98,13 +101,13 @@ export default function Complaints() {
   const openAdd = useCallback(() => {
     setForm(EMPTY_FORM);
     setSelected(null);
-    setModal("add");
+    setModal('add');
   }, []);
 
   const openEdit = useCallback((c) => {
     setSelected(c);
     setForm({ ...EMPTY_FORM, ...c });
-    setModal("edit");
+    setModal('edit');
   }, []);
 
   const openDelete = useCallback((c) => {
@@ -116,9 +119,9 @@ export default function Complaints() {
 
     try {
       await deleteComplaint(deleteTarget.id);
-      showToast("Complaint deleted successfully", "success");
+      showToast('Complaint deleted successfully', 'success');
     } catch (err) {
-      showToast("Failed to delete complaint", "error");
+      showToast('Failed to delete complaint', 'error');
     } finally {
       setDeleteTarget(null);
     }
@@ -126,54 +129,62 @@ export default function Complaints() {
 
   const openView = useCallback((c) => {
     setSelected(c);
-    setModal("view");
+    setModal('view');
   }, []);
 
   const handleSave = useCallback(async () => {
+    if (
+      form.complainantContact &&
+      !CONTACT_REGEX.test(form.complainantContact)
+    ) {
+      showToast('Contact number must be 11 digits starting with 09', 'error');
+      return;
+    }
+
     try {
-      if (modal === "add") {
+      if (modal === 'add') {
         await createComplaint(form);
-        showToast("Complaint created successfully", "success");
+        showToast('Complaint created successfully', 'success');
       } else {
         await updateComplaint(selected.id, form);
-        showToast("Complaint updated successfully", "success");
+        showToast('Complaint updated successfully', 'success');
       }
 
       setModal(null);
     } catch (err) {
-      showToast("Something went wrong", "error");
+      showToast('Something went wrong', 'error');
     }
   }, [modal, form, selected]);
 
   /* ================= COLORS ================= */
   const statusColor = (s) =>
     ({
-      Pending: "badge-yellow",
-      "Under Investigation": "badge-blue",
-      Resolved: "badge-green",
-      Dismissed: "badge-gray",
-    })[s] || "badge-gray";
+      Pending: 'badge-yellow',
+      'Under Investigation': 'badge-blue',
+      Resolved: 'badge-green',
+      Dismissed: 'badge-gray',
+    })[s] || 'badge-gray';
 
   const priorityColor = (p) =>
     ({
-      Low: "badge-gray",
-      Medium: "badge-blue",
-      High: "badge-yellow",
-      Urgent: "badge-red",
-    })[p] || "badge-gray";
+      Low: 'badge-gray',
+      Medium: 'badge-blue',
+      High: 'badge-yellow',
+      Urgent: 'badge-red',
+    })[p] || 'badge-gray';
 
   /* ================= TABLE ================= */
   const columns = [
     {
-      key: "id",
-      label: "ID",
+      key: 'id',
+      label: 'ID',
       render: (v) => (
         <span className="font-mono text-xs text-slate-500">{v}</span>
       ),
     },
     {
-      key: "complainantName",
-      label: "Complainant",
+      key: 'complainantName',
+      label: 'Complainant',
       render: (v, r) => (
         <div>
           <p className="font-semibold text-slate-800">{v}</p>
@@ -181,22 +192,22 @@ export default function Complaints() {
         </div>
       ),
     },
-    { key: "respondentName", label: "Respondent" },
+    { key: 'respondentName', label: 'Respondent' },
     {
-      key: "priority",
-      label: "Priority",
+      key: 'priority',
+      label: 'Priority',
       render: (v) => <span className={`badge ${priorityColor(v)}`}>{v}</span>,
     },
     {
-      key: "status",
-      label: "Status",
+      key: 'status',
+      label: 'Status',
       render: (v) => <span className={`badge ${statusColor(v)}`}>{v}</span>,
     },
-    { key: "dateFiled", label: "Filed" },
-    { key: "assignedTo", label: "Assigned To" },
+    { key: 'dateFiled', label: 'Filed' },
+    { key: 'assignedTo', label: 'Assigned To' },
     {
-      key: "id",
-      label: "Actions",
+      key: 'id',
+      label: 'Actions',
       render: (_, r) => (
         <div className="flex gap-1">
           <button
@@ -260,14 +271,14 @@ export default function Complaints() {
         </div>
 
         <div className="flex gap-2 flex-wrap">
-          {["All", ...STATUSES].map((s) => (
+          {['All', ...STATUSES].map((s) => (
             <button
               key={s}
               onClick={() => setStatusFilter(s)}
               className={`px-3 py-2 rounded-lg text-xs font-medium ${
                 statusFilter === s
-                  ? "bg-blue-800 text-white"
-                  : "bg-gray-100 text-gray-600"
+                  ? 'bg-blue-800 text-white'
+                  : 'bg-gray-100 text-gray-600'
               }`}
             >
               {s}
@@ -276,14 +287,14 @@ export default function Complaints() {
         </div>
 
         <div className="flex gap-2 flex-wrap">
-          {["All", ...PRIORITIES].map((p) => (
+          {['All', ...PRIORITIES].map((p) => (
             <button
               key={p}
               onClick={() => setPriorityFilter(p)}
               className={`px-3 py-2 rounded-lg text-xs font-medium ${
                 priorityFilter === p
-                  ? "bg-amber-600 text-white"
-                  : "bg-gray-100 text-gray-600"
+                  ? 'bg-amber-600 text-white'
+                  : 'bg-gray-100 text-gray-600'
               }`}
             >
               {p}
@@ -299,16 +310,16 @@ export default function Complaints() {
 
       {/* ADD / EDIT MODAL */}
       <Modal
-        isOpen={modal === "add" || modal === "edit"}
+        isOpen={modal === 'add' || modal === 'edit'}
         onClose={() => setModal(null)}
-        title={modal === "add" ? "File New Complaint" : "Update Complaint"}
+        title={modal === 'add' ? 'File New Complaint' : 'Update Complaint'}
         footer={
           <>
             <button onClick={() => setModal(null)} className="btn-secondary">
               Cancel
             </button>
             <button onClick={handleSave} className="btn-primary">
-              {modal === "add" ? "Submit" : "Save"}
+              {modal === 'add' ? 'Submit' : 'Save'}
             </button>
           </>
         }
@@ -327,11 +338,23 @@ export default function Complaints() {
           <FormField label="Contact Number">
             <input
               className="input-field"
+              inputMode="numeric"
+              maxLength={11}
+              placeholder="09XXXXXXXXX"
               value={form.complainantContact}
-              onChange={(e) =>
-                setForm((p) => ({ ...p, complainantContact: e.target.value }))
-              }
+              onChange={(e) => {
+                const digitsOnly = e.target.value
+                  .replace(/\D/g, '')
+                  .slice(0, 11);
+                setForm((p) => ({ ...p, complainantContact: digitsOnly }));
+              }}
             />
+            {form.complainantContact &&
+              !CONTACT_REGEX.test(form.complainantContact) && (
+                <p className="text-xs text-red-500 mt-1">
+                  Must be 11 digits starting with 09.
+                </p>
+              )}
           </FormField>
 
           <div className="col-span-2">
@@ -458,7 +481,7 @@ export default function Complaints() {
       </Modal>
       {/* VIEW MODAL */}
       <Modal
-        isOpen={modal === "view"}
+        isOpen={modal === 'view'}
         onClose={() => setModal(null)}
         title="Complaint Details"
         footer={
@@ -503,7 +526,7 @@ export default function Complaints() {
               <div className="p-3 rounded-xl border bg-white">
                 <p className="text-xs text-slate-400">Respondent</p>
                 <p className="font-semibold text-slate-800">
-                  {selected.respondentName || "—"}
+                  {selected.respondentName || '—'}
                 </p>
               </div>
             </div>
@@ -528,14 +551,14 @@ export default function Complaints() {
               <div className="p-3 rounded-xl border bg-white">
                 <p className="text-xs text-slate-400">Address</p>
                 <p className="text-slate-700">
-                  {selected.complainantAddress || "—"}
+                  {selected.complainantAddress || '—'}
                 </p>
               </div>
 
               <div className="p-3 rounded-xl border bg-white">
                 <p className="text-xs text-slate-400">Assigned To</p>
                 <p className="text-slate-700">
-                  {selected.assignedTo || "Unassigned"}
+                  {selected.assignedTo || 'Unassigned'}
                 </p>
               </div>
             </div>
@@ -552,7 +575,7 @@ export default function Complaints() {
               <div className="p-3 rounded-xl bg-slate-50 border">
                 <p>Resolved Date</p>
                 <p className="text-slate-700 font-medium">
-                  {selected.dateResolved || "Not yet resolved"}
+                  {selected.dateResolved || 'Not yet resolved'}
                 </p>
               </div>
             </div>
@@ -561,7 +584,7 @@ export default function Complaints() {
             <div className="p-4 rounded-xl border bg-white">
               <p className="text-xs text-slate-400 mb-2">Notes / Resolution</p>
               <p className="text-slate-700 whitespace-pre-wrap">
-                {selected.notes || "No notes added."}
+                {selected.notes || 'No notes added.'}
               </p>
             </div>
           </div>
