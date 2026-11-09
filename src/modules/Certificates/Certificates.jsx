@@ -1,21 +1,21 @@
-import { useEffect, useState } from "react";
-import { BARANGAY_INFO, formatDate } from "../../data/mockData";
+import { useEffect, useState } from 'react';
+import { BARANGAY_INFO, formatDate } from '../../data/mockData';
 
 import {
   createCertificate,
   listenCertificates,
   updateCertificate,
   deleteCertificate,
-} from "../../service/certificate.service";
-import Toast from "../../components/Toast";
-import BarangayClearanceTemplate from "../../components/certificates/BarangayClearanceTemplate";
-import BusinessPermitTemplate from "../../components/certificates/BusinessPermitTemplate";
-import CertificationTemplate from "../../components/certificates/CertificationTemplate";
-import { listenResidents } from "../../service/resident.service";
-import { listenBusinesses } from "../../service/business.service";
-import { listenComplaints } from "../../service/complaints.service";
-import Modal from "../../components/Modal";
-import { FormField } from "../../components/Form";
+} from '../../service/certificate.service';
+import Toast from '../../components/Toast';
+import BarangayClearanceTemplate from '../../components/certificates/BarangayClearanceTemplate';
+import BusinessPermitTemplate from '../../components/certificates/BusinessPermitTemplate';
+import CertificationTemplate from '../../components/certificates/CertificationTemplate';
+import { listenResidents } from '../../service/resident.service';
+import { listenBusinesses } from '../../service/business.service';
+import { listenComplaints } from '../../service/complaints.service';
+import Modal from '../../components/Modal';
+import { FormField } from '../../components/Form';
 
 import {
   IconPlus,
@@ -31,59 +31,113 @@ import {
   IconUser,
   IconAdmin,
   IconComplaint,
-} from "../../assets/svg/Icons";
+} from '../../assets/svg/Icons';
 
-import { CERTIFICATE_CONFIG } from "../../data/certificateConfig";
+import { CERTIFICATE_CONFIG } from '../../data/certificateConfig';
 
 const CERT_TYPES = [
-  "Barangay Clearance",
-  "Business Permit",
-  "Solo Parent Certificate",
-  "Certificate of Indigency",
-  "Complaint Certification",
+  'Barangay Clearance',
+  'Business Permit',
+  'Solo Parent Certificate',
+  'Certificate of Indigency',
+  'Complaint Certification',
 ];
 
 const CERT_FEES = {
-  "Barangay Clearance": "50.00",
-  "Business Permit": "200.00",
-  "Solo Parent Certificate": "0.00",
-  "Certificate of Indigency": "0.00",
-  "Complaint Certification": "50.00",
+  'Barangay Clearance': '50.00',
+  'Business Permit': '200.00',
+  'Solo Parent Certificate': '0.00',
+  'Certificate of Indigency': '0.00',
+  'Complaint Certification': '50.00',
 };
 
+/* ======================
+   TODAY (LOCAL DATE, "YYYY-MM-DD")
+   Used for the auto Date Issued.
+   Uses the local date (not UTC) so it is correct in the Philippines
+   even between 12:00 AM and 8:00 AM.
+====================== */
+const getToday = () => {
+  const now = new Date();
+  const yy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+
+  return `${yy}-${mm}-${dd}`;
+};
+
+/* ======================
+   AUTO EXPIRY (+1 MONTH)
+   Applies to: Business Permit, Barangay Clearance
+   e.g. 2026-11-09 -> 2026-12-09
+   If the next month is shorter, it uses that month's last day
+   e.g. 2026-01-31 -> 2026-02-28
+====================== */
+const addOneMonth = (dateStr) => {
+  if (!dateStr) return '';
+
+  const [y, m, d] = dateStr.split('-').map(Number);
+
+  // m is 1-based, so using it as the index gives the NEXT month
+  const lastDayOfNextMonth = new Date(y, m + 1, 0).getDate();
+  const next = new Date(y, m, Math.min(d, lastDayOfNextMonth));
+
+  const yy = next.getFullYear();
+  const mm = String(next.getMonth() + 1).padStart(2, '0');
+  const dd = String(next.getDate()).padStart(2, '0');
+
+  return `${yy}-${mm}-${dd}`;
+};
+
+// certificate types whose expiry date is automatic (issued date + 1 month)
+const AUTO_EXPIRY_TYPES = ['Business Permit', 'Barangay Clearance'];
+
 const EMPTY_FORM = {
-  type: "Barangay Clearance",
+  type: 'Barangay Clearance',
 
-  residentId: "",
-  residentName: "",
+  residentId: '',
+  residentName: '',
 
-  purpose: "",
-  orNumber: "",
+  purpose: '',
+  orNumber: '',
 
   issuedBy: BARANGAY_INFO.secretary,
-  issuedDate: new Date().toISOString().split("T")[0],
-  expiryDate: "",
+  issuedDate: getToday(),
+  expiryDate: '',
 
-  fee: "50.00",
+  fee: '50.00',
 
   // business
-  businessName: "",
-  businessAddress: "",
-  businessNature: "",
-  operatorName: "",
+  businessName: '',
+  businessAddress: '',
+  businessNature: '',
+  operatorName: '',
 
   // complaint
-  complaintId: "",
-  complainantName: "",
-  respondentName: "",
-  complaintType: "",
+  complaintId: '',
+  complainantName: '',
+  respondentName: '',
+  complaintType: '',
+};
+
+// fresh form: today's date + auto expiry (default type is Barangay Clearance)
+const getNewForm = () => {
+  const today = getToday();
+
+  return {
+    ...EMPTY_FORM,
+    issuedDate: today,
+    expiryDate: AUTO_EXPIRY_TYPES.includes(EMPTY_FORM.type)
+      ? addOneMonth(today)
+      : '',
+  };
 };
 
 export default function Certificates() {
   const [certificates, setCertificates] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState('');
   const [modal, setModal] = useState(null);
 
   const [selected, setSelected] = useState(null);
@@ -95,8 +149,8 @@ export default function Certificates() {
   const [businesses, setBusinesses] = useState([]);
   const [complaints, setComplaints] = useState([]);
   const [toast, setToast] = useState({
-    message: "",
-    type: "success",
+    message: '',
+    type: 'success',
   });
   /* ======================
      REALTIME FIREBASE LISTENER
@@ -137,25 +191,26 @@ export default function Certificates() {
   const filtered = certificates.filter((c) =>
     `${c.residentName} ${c.id} ${c.type} ${c.purpose}`
       .toLowerCase()
-      .includes(search.toLowerCase()),
+      .includes(search.toLowerCase())
   );
 
   /* ======================
      MODAL ACTIONS
   ====================== */
   const openAdd = () => {
-    setForm(EMPTY_FORM);
-    setModal("add");
+    // Date Issued is always today's date, expiry is auto (+1 month)
+    setForm(getNewForm());
+    setModal('add');
   };
 
   const openView = (c) => {
     setSelected(c);
-    setModal("view");
+    setModal('view');
   };
 
   const openPrint = (c) => {
     setSelected(c);
-    setModal("print");
+    setModal('print');
   };
 
   /* ======================
@@ -163,48 +218,51 @@ export default function Certificates() {
   ====================== */
   const handleSave = async () => {
     try {
+      // Date Issued is always the current date (cannot be edited)
+      const issuedDate = getToday();
+
       // REQUIRED FIELDS VALIDATION
       const requiredFields = [];
 
-      if (certConfig.fields.includes("resident") && !form.residentId) {
-        requiredFields.push("Resident Name");
+      if (certConfig.fields.includes('resident') && !form.residentId) {
+        requiredFields.push('Resident Name');
       }
 
-      if (certConfig.fields.includes("businessName") && !form.businessName) {
-        requiredFields.push("Business Name");
+      if (certConfig.fields.includes('businessName') && !form.businessName) {
+        requiredFields.push('Business Name');
       }
 
       if (
-        certConfig.fields.includes("businessAddress") &&
+        certConfig.fields.includes('businessAddress') &&
         !form.businessAddress
       ) {
-        requiredFields.push("Business Address");
+        requiredFields.push('Business Address');
       }
 
       if (
-        certConfig.fields.includes("businessNature") &&
+        certConfig.fields.includes('businessNature') &&
         !form.businessNature
       ) {
-        requiredFields.push("Nature of Business");
+        requiredFields.push('Nature of Business');
       }
 
-      if (certConfig.fields.includes("purpose") && !form.purpose.trim()) {
-        requiredFields.push("Purpose");
+      if (certConfig.fields.includes('purpose') && !form.purpose.trim()) {
+        requiredFields.push('Purpose');
       }
 
-      if (!form.issuedDate) {
-        requiredFields.push("Issued Date");
+      if (!issuedDate) {
+        requiredFields.push('Issued Date');
       }
 
       if (!form.fee) {
-        requiredFields.push("Fee");
+        requiredFields.push('Fee');
       }
 
       // SHOW ERROR TOAST
       if (requiredFields.length > 0) {
         setToast({
-          message: `Please fill in: ${requiredFields.join(", ")}`,
-          type: "error",
+          message: `Please fill in: ${requiredFields.join(', ')}`,
+          type: 'error',
         });
 
         return;
@@ -213,26 +271,32 @@ export default function Certificates() {
       // SAVE
       const payload = {
         ...form,
-        fee: form.fee || "0.00",
-        status: "Issued",
+        fee: form.fee || '0.00',
+        issuedDate,
+        // Business Permit and Barangay Clearance always expire
+        // 1 month after the issued date
+        expiryDate: AUTO_EXPIRY_TYPES.includes(form.type)
+          ? addOneMonth(issuedDate)
+          : form.expiryDate,
+        status: 'Issued',
       };
 
       await createCertificate(payload);
 
       // SUCCESS TOAST
       setToast({
-        message: "Certificate issued successfully!",
-        type: "success",
+        message: 'Certificate issued successfully!',
+        type: 'success',
       });
 
       setModal(null);
-      setForm(EMPTY_FORM);
+      setForm(getNewForm());
     } catch (error) {
-      console.error("Error saving certificate:", error);
+      console.error('Error saving certificate:', error);
 
       setToast({
-        message: "Failed to issue certificate.",
-        type: "error",
+        message: 'Failed to issue certificate.',
+        type: 'error',
       });
     }
   };
@@ -249,8 +313,8 @@ export default function Certificates() {
       setModal(null);
       setSelected(null);
     } catch (error) {
-      console.error("Error updating certificate:", error);
-      alert("Failed to update certificate.");
+      console.error('Error updating certificate:', error);
+      alert('Failed to update certificate.');
     }
   };
 
@@ -264,17 +328,17 @@ export default function Certificates() {
       await deleteCertificate(deleteTarget.id);
 
       setToast({
-        message: "Certificate deleted successfully!",
-        type: "success",
+        message: 'Certificate deleted successfully!',
+        type: 'success',
       });
 
       setDeleteTarget(null);
     } catch (error) {
-      console.error("Error deleting certificate:", error);
+      console.error('Error deleting certificate:', error);
 
       setToast({
-        message: "Failed to delete certificate.",
-        type: "error",
+        message: 'Failed to delete certificate.',
+        type: 'error',
       });
     }
   };
@@ -290,12 +354,12 @@ export default function Certificates() {
   ====================== */
   const certTypeColor = (t) =>
     ({
-      "Barangay Clearance": "badge-blue",
-      "Business Permit": "badge-green",
-      "Solo Parent Certificate": "badge-yellow",
-      "Certificate of Indigency": "badge-red",
-      "Complaint Certification": "badge-gray",
-    })[t] || "badge-gray";
+      'Barangay Clearance': 'badge-blue',
+      'Business Permit': 'badge-green',
+      'Solo Parent Certificate': 'badge-yellow',
+      'Certificate of Indigency': 'badge-red',
+      'Complaint Certification': 'badge-gray',
+    })[t] || 'badge-gray';
 
   /* ======================
      TEMPLATE RENDERER
@@ -304,12 +368,12 @@ export default function Certificates() {
     if (!cert) return null;
 
     switch (cert.type) {
-      case "Barangay Clearance":
+      case 'Barangay Clearance':
         return (
           <BarangayClearanceTemplate cert={cert} barangayInfo={barangayInfo} />
         );
 
-      case "Business Permit":
+      case 'Business Permit':
         return (
           <BusinessPermitTemplate cert={cert} barangayInfo={barangayInfo} />
         );
@@ -322,10 +386,11 @@ export default function Certificates() {
   };
 
   const certConfig = CERTIFICATE_CONFIG[form.type];
+  const isAutoExpiry = AUTO_EXPIRY_TYPES.includes(form.type);
   const filteredResidents =
-    form.type === "Solo Parent Certificate"
+    form.type === 'Solo Parent Certificate'
       ? residents.filter((r) => r.soloParent)
-      : form.type === "Certificate of Indigency"
+      : form.type === 'Certificate of Indigency'
         ? residents.filter((r) => r.indigent)
         : residents;
   return (
@@ -341,7 +406,7 @@ export default function Certificates() {
 
         <div className="flex gap-2">
           <button
-            onClick={() => setModal("officials")}
+            onClick={() => setModal('officials')}
             className="btn-secondary flex items-center gap-2"
           >
             <IconInfo size={18} />
@@ -372,11 +437,11 @@ export default function Certificates() {
               <p className="text-xl mb-1">
                 {
                   {
-                    "Barangay Clearance": <IconCertificate size={24} />,
-                    "Business Permit": <IconBusiness size={24} />,
-                    "Solo Parent Certificate": <IconUser size={24} />,
-                    "Certificate of Indigency": <IconUsers size={24} />,
-                    "Complaint Certification": <IconComplaint size={24} />,
+                    'Barangay Clearance': <IconCertificate size={24} />,
+                    'Business Permit': <IconBusiness size={24} />,
+                    'Solo Parent Certificate': <IconUser size={24} />,
+                    'Certificate of Indigency': <IconUsers size={24} />,
+                    'Complaint Certification': <IconComplaint size={24} />,
                   }[t]
                 }
               </p>
@@ -501,7 +566,7 @@ export default function Certificates() {
 
       {/* ISSUE MODAL */}
       <Modal
-        isOpen={modal === "add"}
+        isOpen={modal === 'add'}
         onClose={() => setModal(null)}
         title="Issue Certificate"
         footer={
@@ -527,11 +592,20 @@ export default function Certificates() {
 
                 const config = CERTIFICATE_CONFIG[selectedType];
 
+                // Date Issued is always the current date
+                const today = getToday();
+
                 setForm({
                   ...EMPTY_FORM,
                   type: selectedType,
-                  fee: CERT_FEES[selectedType] || "0.00",
-                  purpose: config.purposePlaceholder || "",
+                  fee: CERT_FEES[selectedType] || '0.00',
+                  purpose: config.purposePlaceholder || '',
+                  issuedDate: today,
+                  // Business Permit / Barangay Clearance:
+                  // auto expiry = issued date + 1 month
+                  expiryDate: AUTO_EXPIRY_TYPES.includes(selectedType)
+                    ? addOneMonth(today)
+                    : '',
                 });
               }}
             >
@@ -542,7 +616,7 @@ export default function Certificates() {
           </FormField>
 
           {/* RESIDENT */}
-          {certConfig.fields.includes("resident") && (
+          {certConfig.fields.includes('resident') && (
             <FormField label="Resident Name" required>
               <select
                 className="input-field"
@@ -553,7 +627,7 @@ export default function Certificates() {
                   setForm({
                     ...form,
                     residentId: e.target.value,
-                    residentName: r ? `${r.firstName} ${r.lastName}` : "",
+                    residentName: r ? `${r.firstName} ${r.lastName}` : '',
                   });
                 }}
               >
@@ -562,9 +636,9 @@ export default function Certificates() {
                 {filteredResidents.map((r) => (
                   <option key={r.id} value={r.id}>
                     {r.firstName} {r.lastName}
-                    {form.type === "Solo Parent Certificate" &&
-                      " - Solo Parent"}
-                    {form.type === "Certificate of Indigency" && " - Indigent"}
+                    {form.type === 'Solo Parent Certificate' &&
+                      ' - Solo Parent'}
+                    {form.type === 'Certificate of Indigency' && ' - Indigent'}
                   </option>
                 ))}
               </select>
@@ -572,29 +646,30 @@ export default function Certificates() {
           )}
 
           {/* BUSINESS NAME */}
-          {certConfig.fields.includes("businessName") && (
+          {certConfig.fields.includes('businessName') && (
             <FormField label="Business Name" required>
               <select
                 className="input-field"
                 value={form.businessName}
                 onChange={(e) => {
                   const business = businesses.find(
-                    (b) => b.id === e.target.value,
+                    (b) => b.id === e.target.value
                   );
 
                   setForm({
                     ...form,
 
                     // resident / owner
-                    residentId: business?.ownerId || "",
-                    residentName: business?.ownerName || "",
+                    residentId: business?.ownerId || '',
+                    residentName: business?.ownerName || '',
 
                     // business details
-                    businessName: business?.businessName || "",
-                    businessAddress: business?.address || "",
-                    businessNature: business?.businessType || "",
-                    operatorName: business?.ownerName || "",
-                    expiryDate: business?.permitExpiry || "",
+                    businessName: business?.businessName || '',
+                    businessAddress: business?.address || '',
+                    businessNature: business?.businessType || '',
+                    operatorName: business?.ownerName || '',
+                    // Business Permit: expiry is always issued date + 1 month
+                    expiryDate: addOneMonth(form.issuedDate),
                   });
                 }}
               >
@@ -610,7 +685,7 @@ export default function Certificates() {
           )}
 
           {/* BUSINESS ADDRESS */}
-          {certConfig.fields.includes("businessAddress") && (
+          {certConfig.fields.includes('businessAddress') && (
             <FormField label="Business Address" required>
               <input
                 className="input-field"
@@ -627,7 +702,7 @@ export default function Certificates() {
           )}
 
           {/* BUSINESS NATURE */}
-          {certConfig.fields.includes("businessNature") && (
+          {certConfig.fields.includes('businessNature') && (
             <FormField label="Nature of Business" required>
               <input
                 className="input-field"
@@ -644,7 +719,7 @@ export default function Certificates() {
           )}
 
           {/* OPERATOR */}
-          {certConfig.fields.includes("operatorName") && (
+          {certConfig.fields.includes('operatorName') && (
             <FormField label="Operator / Manager">
               <input
                 className="input-field"
@@ -661,14 +736,14 @@ export default function Certificates() {
           )}
 
           {/* COMPLAINT SELECTOR (AUTO-FILL FROM COMPLAINT LISTEN ONLY) */}
-          {certConfig.fields.includes("complainantName") && (
+          {certConfig.fields.includes('complainantName') && (
             <FormField label="Select Complaint">
               <select
                 className="input-field"
-                value={form.complaintId || ""}
+                value={form.complaintId || ''}
                 onChange={(e) => {
                   const selectedComplaint = complaints.find(
-                    (c) => c.id === e.target.value,
+                    (c) => c.id === e.target.value
                   );
 
                   if (!selectedComplaint) return;
@@ -677,18 +752,18 @@ export default function Certificates() {
                     ...prev,
 
                     // complaint id
-                    complaintId: selectedComplaint.id || "",
+                    complaintId: selectedComplaint.id || '',
 
                     // complaint data
-                    complainantName: selectedComplaint.complainantName || "",
+                    complainantName: selectedComplaint.complainantName || '',
 
-                    respondentName: selectedComplaint.respondentName || "",
+                    respondentName: selectedComplaint.respondentName || '',
 
-                    complaintType: selectedComplaint.category || "",
+                    complaintType: selectedComplaint.category || '',
 
-                    purpose: selectedComplaint.description || "",
+                    purpose: selectedComplaint.description || '',
 
-                    residentName: selectedComplaint.complainantName || "",
+                    residentName: selectedComplaint.complainantName || '',
                   }));
                 }}
               >
@@ -704,11 +779,11 @@ export default function Certificates() {
           )}
 
           {/* COMPLAINANT NAME */}
-          {certConfig.fields.includes("complainantName") && (
+          {certConfig.fields.includes('complainantName') && (
             <FormField label="Complainant Name">
               <input
                 className="input-field"
-                value={form.complainantName || ""}
+                value={form.complainantName || ''}
                 onChange={(e) =>
                   setForm({
                     ...form,
@@ -721,11 +796,11 @@ export default function Certificates() {
           )}
 
           {/* RESPONDENT NAME */}
-          {certConfig.fields.includes("respondentName") && (
+          {certConfig.fields.includes('respondentName') && (
             <FormField label="Respondent Name">
               <input
                 className="input-field"
-                value={form.respondentName || ""}
+                value={form.respondentName || ''}
                 onChange={(e) =>
                   setForm({
                     ...form,
@@ -738,11 +813,11 @@ export default function Certificates() {
           )}
 
           {/* COMPLAINT TYPE */}
-          {certConfig.fields.includes("complaintType") && (
+          {certConfig.fields.includes('complaintType') && (
             <FormField label="Complaint Type">
               <input
                 className="input-field"
-                value={form.complaintType || ""}
+                value={form.complaintType || ''}
                 onChange={(e) =>
                   setForm({
                     ...form,
@@ -755,7 +830,7 @@ export default function Certificates() {
           )}
 
           {/* PURPOSE */}
-          {certConfig.fields.includes("purpose") && (
+          {certConfig.fields.includes('purpose') && (
             <FormField label="Purpose">
               <input
                 className="input-field"
@@ -766,7 +841,7 @@ export default function Certificates() {
                     purpose: e.target.value,
                   })
                 }
-                placeholder={certConfig.purposePlaceholder || "Enter purpose"}
+                placeholder={certConfig.purposePlaceholder || 'Enter purpose'}
               />
             </FormField>
           )}
@@ -776,15 +851,15 @@ export default function Certificates() {
             <FormField label="Date Issued">
               <input
                 type="date"
-                className="input-field"
+                className="input-field bg-slate-50 cursor-not-allowed"
                 value={form.issuedDate}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    issuedDate: e.target.value,
-                  })
-                }
+                disabled
+                readOnly
               />
+
+              <p className="text-xs text-slate-400 mt-1">
+                Auto-set to today&apos;s date.
+              </p>
             </FormField>
 
             <FormField label="Expiry Date">
@@ -792,6 +867,7 @@ export default function Certificates() {
                 type="date"
                 className="input-field"
                 value={form.expiryDate}
+                readOnly={isAutoExpiry}
                 onChange={(e) =>
                   setForm({
                     ...form,
@@ -799,6 +875,12 @@ export default function Certificates() {
                   })
                 }
               />
+
+              {isAutoExpiry && (
+                <p className="text-xs text-slate-400 mt-1">
+                  Auto-set to 1 month after the issued date.
+                </p>
+              )}
             </FormField>
           </div>
 
@@ -836,27 +918,27 @@ export default function Certificates() {
 
       {/* VIEW MODAL */}
       <Modal
-        isOpen={modal === "view"}
+        isOpen={modal === 'view'}
         onClose={() => setModal(null)}
         title="Certificate Details"
       >
         {selected && (
           <div className="space-y-3">
             {[
-              ["Certificate ID", selected.id],
-              ["Type", selected.type],
-              ["Resident", selected.residentName],
-              ["Purpose", selected.purpose],
-              ["Date Issued", formatDate(selected.issuedDate)],
+              ['Certificate ID', selected.id],
+              ['Type', selected.type],
+              ['Resident', selected.residentName],
+              ['Purpose', selected.purpose],
+              ['Date Issued', formatDate(selected.issuedDate)],
               [
-                "Expiry",
+                'Expiry',
                 selected.expiryDate
                   ? formatDate(selected.expiryDate)
-                  : "6 months from issuance",
+                  : '6 months from issuance',
               ],
-              ["O.R. Number", selected.orNumber],
-              ["Fee", `₱${selected.fee}`],
-              ["Issued By", selected.issuedBy],
+              ['O.R. Number', selected.orNumber],
+              ['Fee', `₱${selected.fee}`],
+              ['Issued By', selected.issuedBy],
             ].map(([k, v]) => (
               <div
                 key={k}
@@ -881,7 +963,7 @@ export default function Certificates() {
 
       {/* PRINT MODAL */}
       <Modal
-        isOpen={modal === "print"}
+        isOpen={modal === 'print'}
         onClose={() => setModal(null)}
         title={`Print: ${selected?.type}`}
       >
@@ -914,7 +996,7 @@ export default function Certificates() {
 
       {/* EDIT OFFICIALS MODAL */}
       <Modal
-        isOpen={modal === "officials"}
+        isOpen={modal === 'officials'}
         onClose={() => setModal(null)}
         title="Barangay Officials"
         footer={
@@ -1013,7 +1095,7 @@ export default function Certificates() {
 
           <div className="bg-slate-50 rounded-lg p-3 text-sm">
             <p>
-              <span className="font-semibold">Resident:</span>{" "}
+              <span className="font-semibold">Resident:</span>{' '}
               {deleteTarget?.residentName}
             </p>
 
@@ -1022,7 +1104,7 @@ export default function Certificates() {
             </p>
 
             <p>
-              <span className="font-semibold">Purpose:</span>{" "}
+              <span className="font-semibold">Purpose:</span>{' '}
               {deleteTarget?.purpose}
             </p>
           </div>
@@ -1035,8 +1117,8 @@ export default function Certificates() {
         type={toast.type}
         onClose={() =>
           setToast({
-            message: "",
-            type: "success",
+            message: '',
+            type: 'success',
           })
         }
       />
