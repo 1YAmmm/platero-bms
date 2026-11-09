@@ -1,14 +1,14 @@
-import { useState, useEffect } from "react";
-import Modal from "../../components/Modal";
-import { FormField } from "../../components/Form";
-import Toast from "../../components/Toast";
+import { useState, useEffect } from 'react';
+import Modal from '../../components/Modal';
+import { FormField } from '../../components/Form';
+import Toast from '../../components/Toast';
 
-import { registerAdmin, resetAdminPassword } from "../../lib/auth/admin.auth";
+import { registerAdmin, resetAdminPassword } from '../../lib/auth/admin.auth';
 import {
   listenAdmins,
   deleteAdmin,
   updateAdmin,
-} from "../../service/admin.service";
+} from '../../service/admin.service';
 
 import {
   IconPlus,
@@ -16,15 +16,22 @@ import {
   IconDelete,
   IconEye,
   IconEyeOff,
-} from "../../assets/svg/Icons";
+} from '../../assets/svg/Icons';
 
 const EMPTY_FORM = {
-  id: "",
-  password: "",
-  fullName: "",
-  email: "",
-  status: "Active",
+  id: '',
+  password: '',
+  fullName: '',
+  email: '',
+  status: 'Active',
 };
+
+/* ===================== PROTECTED ACCOUNT ===================== */
+// Keep these lowercase. Emails are lowercased before comparing.
+const PROTECTED_ADMIN_EMAILS = ['superadmin123@gmail.com'];
+
+const isProtectedAdmin = (admin) =>
+  PROTECTED_ADMIN_EMAILS.includes(admin?.email?.trim().toLowerCase());
 
 /* ===================== FORM ===================== */
 function AdminForm({
@@ -37,6 +44,8 @@ function AdminForm({
   resetLoading,
   resetSuccess,
 }) {
+  const lockEmail = modal === 'edit' && isProtectedAdmin(form);
+
   return (
     <div className="space-y-4">
       {/* FULL NAME */}
@@ -56,18 +65,24 @@ function AdminForm({
           type="email"
           className="input-field"
           value={form.email}
+          disabled={lockEmail}
           onChange={(e) =>
             setForm((prev) => ({ ...prev, email: e.target.value }))
           }
         />
+        {lockEmail && (
+          <p className="text-xs text-slate-500 mt-1">
+            This account is protected, so its email cannot be changed.
+          </p>
+        )}
       </FormField>
 
       {/* PASSWORD (ADD ONLY) */}
-      {modal === "add" && (
+      {modal === 'add' && (
         <FormField label="Password" required>
           <div className="relative">
             <input
-              type={showPass ? "text" : "password"}
+              type={showPass ? 'text' : 'password'}
               className="input-field pr-10"
               value={form.password}
               onChange={(e) =>
@@ -87,7 +102,7 @@ function AdminForm({
       )}
 
       {/* RESET PASSWORD (EDIT ONLY) */}
-      {modal === "edit" && (
+      {modal === 'edit' && (
         <div className="pt-2 space-y-1">
           <button
             type="button"
@@ -95,7 +110,7 @@ function AdminForm({
             onClick={() => onResetPassword(form)}
             className="text-sm text-blue-600 hover:underline font-medium disabled:opacity-50"
           >
-            {resetLoading ? "Sending..." : "Reset Password"}
+            {resetLoading ? 'Sending...' : 'Reset Password'}
           </button>
 
           {resetSuccess && (
@@ -136,8 +151,8 @@ export default function AdminAccounts() {
 
   // TOAST STATE
   const [toast, setToast] = useState({
-    message: "",
-    type: "success",
+    message: '',
+    type: 'success',
   });
 
   /* ===================== LOAD ADMINS ===================== */
@@ -147,62 +162,73 @@ export default function AdminAccounts() {
   }, []);
 
   /* ===================== TOAST ===================== */
-  const showMessage = (message, type = "success") => {
+  const showMessage = (message, type = 'success') => {
     setToast({ message, type });
 
     setTimeout(() => {
-      setToast({ message: "", type: "success" });
+      setToast({ message: '', type: 'success' });
     }, 3000);
   };
 
   /* ===================== OPEN MODALS ===================== */
   const openAdd = () => {
     setForm({ ...EMPTY_FORM });
-    setModal("add");
+    setModal('add');
   };
 
   const openEdit = (a) => {
     setForm({ ...EMPTY_FORM, ...a });
-    setModal("edit");
+    setModal('edit');
     setResetSuccess(false);
   };
 
   /* ===================== SAVE ===================== */
   const handleSave = async () => {
     try {
-      if (modal === "add") {
+      if (modal === 'add') {
         await registerAdmin(form.email, form.password, form.fullName);
-        showMessage("Success: Admin added successfully", "success");
+        showMessage('Success: Admin added successfully', 'success');
       }
 
-      if (modal === "edit") {
+      if (modal === 'edit') {
+        // Keep the protected account's email locked even if the field
+        // was re-enabled through dev tools.
+        const original = admins.find((a) => a.id === form.id);
+        const email = isProtectedAdmin(original) ? original.email : form.email;
+
         await updateAdmin(form.id, {
           fullName: form.fullName,
-          email: form.email,
+          email,
           status: form.status,
         });
 
-        showMessage("Success: Admin updated successfully", "success");
+        showMessage('Success: Admin updated successfully', 'success');
       }
 
       setModal(null);
       setForm({ ...EMPTY_FORM });
     } catch (err) {
       console.error(err);
-      showMessage("Error: Failed to save admin", "error");
+      showMessage('Error: Failed to save admin', 'error');
     }
   };
 
   /* ===================== DELETE ===================== */
   const handleDelete = async () => {
+    if (isProtectedAdmin(deleteTarget)) {
+      setDeleteTarget(null);
+      showMessage('Error: This admin account cannot be deleted', 'error');
+      return;
+    }
+
     try {
       await deleteAdmin(deleteTarget.id);
       setDeleteTarget(null);
 
-      showMessage("Success: Admin deleted successfully", "success");
+      showMessage('Success: Admin deleted successfully', 'success');
     } catch (err) {
       console.error(err);
-      showMessage("Error: Failed to delete admin", "error");
+      showMessage('Error: Failed to delete admin', 'error');
     }
   };
 
@@ -215,10 +241,10 @@ export default function AdminAccounts() {
       await resetAdminPassword(admin.email);
 
       setResetSuccess(true);
-      showMessage("Success: Reset email sent", "success");
+      showMessage('Success: Reset email sent', 'success');
     } catch (err) {
       console.error(err);
-      showMessage("Error: Failed to send reset email", "error");
+      showMessage('Error: Failed to send reset email', 'error');
     } finally {
       setResetLoading(false);
     }
@@ -230,7 +256,7 @@ export default function AdminAccounts() {
       <Toast
         message={toast.message}
         type={toast.type}
-        onClose={() => setToast({ message: "", type: "success" })}
+        onClose={() => setToast({ message: '', type: 'success' })}
       />
 
       {/* HEADER */}
@@ -250,60 +276,67 @@ export default function AdminAccounts() {
 
       {/* LIST */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {admins.map((a) => (
-          <div key={a.id} className="glass-card p-5">
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-blue-100 flex items-center justify-center text-xl font-bold text-blue-800">
-                  {a.fullName?.[0] || "A"}
+        {admins.map((a) => {
+          const protectedAccount = isProtectedAdmin(a);
+
+          return (
+            <div key={a.id} className="glass-card p-5">
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-100 flex items-center justify-center text-xl font-bold text-blue-800">
+                    {a.fullName?.[0] || 'A'}
+                  </div>
+
+                  <div>
+                    <p className="font-bold text-slate-800">{a.fullName}</p>
+                    <p className="text-xs text-slate-500">{a.email}</p>
+                  </div>
                 </div>
 
-                <div>
-                  <p className="font-bold text-slate-800">{a.fullName}</p>
-                  <p className="text-xs text-slate-500">{a.email}</p>
-                </div>
+                <span
+                  className={`badge ${
+                    a.status === 'Active' ? 'badge-green' : 'badge-gray'
+                  }`}
+                >
+                  {a.status}
+                </span>
               </div>
 
-              <span
-                className={`badge ${
-                  a.status === "Active" ? "badge-green" : "badge-gray"
-                }`}
-              >
-                {a.status}
-              </span>
-            </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => openEdit(a)}
+                  className="flex-1 btn-secondary btn-sm"
+                >
+                  <IconEdit size={14} /> Edit
+                </button>
 
-            <div className="flex gap-2">
-              <button
-                onClick={() => openEdit(a)}
-                className="flex-1 btn-secondary btn-sm"
-              >
-                <IconEdit size={14} /> Edit
-              </button>
-
-              <button
-                onClick={() => setDeleteTarget(a)}
-                className="btn-sm bg-red-50 text-red-600 px-3 rounded-lg"
-              >
-                <IconDelete size={14} />
-              </button>
+                {!protectedAccount && (
+                  <button
+                    onClick={() => setDeleteTarget(a)}
+                    title="Delete admin"
+                    className="btn-sm bg-red-50 text-red-600 px-3 rounded-lg"
+                  >
+                    <IconDelete size={14} />
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* MODAL */}
       <Modal
-        isOpen={modal === "add" || modal === "edit"}
+        isOpen={modal === 'add' || modal === 'edit'}
         onClose={() => setModal(null)}
-        title={modal === "add" ? "Create Admin" : "Edit Admin"}
+        title={modal === 'add' ? 'Create Admin' : 'Edit Admin'}
         footer={
           <>
             <button onClick={() => setModal(null)} className="btn-secondary">
               Cancel
             </button>
             <button onClick={handleSave} className="btn-primary">
-              {modal === "add" ? "Create" : "Save"}
+              {modal === 'add' ? 'Create' : 'Save'}
             </button>
           </>
         }
@@ -339,7 +372,7 @@ export default function AdminAccounts() {
           </>
         }
       >
-        Are you sure you want to delete{" "}
+        Are you sure you want to delete{' '}
         <strong>{deleteTarget?.fullName}</strong>?
       </Modal>
     </div>
